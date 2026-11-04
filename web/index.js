@@ -14,6 +14,9 @@ const { default: build } = await import("./build/server/index.js");
 const [host, port] = (process.env.AWS_LAMBDA_HTTP_ENDPOINT || "0.0.0.0:3000").split(":");
 
 const app = express();
+// Which vertical answered: visible in response headers, so the split can be shown, not asserted.
+const vertical = process.env.VERTICAL ?? "all";
+app.use((_req, res, next) => { res.setHeader("x-vertical", vertical); next(); });
 // App-to-domain association for passkeys in the mobile shell. Served from here so the RP ID,
 // the WebView origin and the associated domain are one hostname.
 const appleAppIds = (process.env.APPLE_APP_IDS ?? "").split(",").filter(Boolean);
@@ -29,8 +32,11 @@ app.get("/.well-known/assetlinks.json", (_req, res) => {
       : [],
   );
 });
-app.use("/assets", express.static("build/client/assets", { immutable: true, maxAge: "1y" }));
+// Static files mount under the same base the client bundle was built with (see vite.config.ts).
+const base = vertical === "orders" ? "/orders-static" : "";
+app.use(`${base}/assets`, express.static("build/client/assets", { immutable: true, maxAge: "1y" }));
 app.use(
+  base || "/",
   express.static("build/client", {
     // Prerendered pages: the CDN keeps them 5 min, browsers always revalidate.
     setHeaders: (res, path) => {

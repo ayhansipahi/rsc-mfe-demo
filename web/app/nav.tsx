@@ -15,6 +15,9 @@ export function Nav() {
           key={to}
           to={to}
           end={to === "/"}
+          // Verticals are separate builds behind one domain; a client-side navigation would ask
+          // this build's server for another build's tree. Cross-vertical links are document loads.
+          reloadDocument
           className={({ isActive, isPending }) =>
             `rounded-md px-3 py-1.5 text-sm ${isActive ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"} ${isPending ? "opacity-60" : ""}`
           }
