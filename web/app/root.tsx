@@ -11,8 +11,8 @@ import { Nav } from "./nav";
 import "./app.css";
 
 // The chrome is per client: the mobile shell announces itself in the User-Agent and draws its own
-// tab bar, so its pages render without the web nav. CloudFront's default TTL is 0, so the two
-// variants never share a cache entry.
+// tab bar, so its pages render without the web nav. This distribution's cache policy has a default
+// TTL of 0, so the two variants never share a cache entry; a caching policy would need the token in its key.
 export function loader({ request }: Route.LoaderArgs) {
   return { shell: (request.headers.get("user-agent") ?? "").includes("RSCShell/") };
 }

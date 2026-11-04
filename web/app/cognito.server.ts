@@ -1,16 +1,23 @@
 // The only code that talks to Cognito. The browser never does: the ceremony's options and
-// results travel through /auth/passkey, so the pool and client IDs stay on the server.
+// results travel through /auth/passkey. The app client is confidential (it has a secret), and
+// sign-in uses the Admin* operations, which require IAM credentials: this function's execution
+// role is the only principal that can start or finish a sign-in for this client.
+import { createHmac } from "node:crypto";
 import {
+  AdminInitiateAuthCommand,
+  AdminRespondToAuthChallengeCommand,
   CognitoIdentityProviderClient,
   CompleteWebAuthnRegistrationCommand,
-  InitiateAuthCommand,
-  RespondToAuthChallengeCommand,
   StartWebAuthnRegistrationCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
 let cached: CognitoIdentityProviderClient | undefined;
 const client = () => (cached ??= new CognitoIdentityProviderClient({ region: process.env.COGNITO_USER_POOL_ID!.split("_")[0] }));
+const UserPoolId = () => process.env.COGNITO_USER_POOL_ID!;
 const ClientId = () => process.env.COGNITO_CLIENT_ID!;
+// Cognito's proof that the caller holds the client secret: HMAC-SHA256(username + clientId, secret).
+const secretHash = (username: string) =>
+  createHmac("sha256", process.env.COGNITO_CLIENT_SECRET!).update(username + ClientId()).digest("base64");
 
 const tokenOf = (r: { AuthenticationResult?: { AccessToken?: string } }) => {
   const token = r.AuthenticationResult?.AccessToken;
@@ -20,10 +27,11 @@ const tokenOf = (r: { AuthenticationResult?: { AccessToken?: string } }) => {
 
 export async function passwordSignIn(username: string, password: string) {
   const r = await client().send(
-    new InitiateAuthCommand({
+    new AdminInitiateAuthCommand({
+      UserPoolId: UserPoolId(),
       ClientId: ClientId(),
       AuthFlow: "USER_AUTH",
-      AuthParameters: { USERNAME: username, PREFERRED_CHALLENGE: "PASSWORD", PASSWORD: password },
+      AuthParameters: { USERNAME: username, PREFERRED_CHALLENGE: "PASSWORD", PASSWORD: password, SECRET_HASH: secretHash(username) },
     }),
   );
   return tokenOf(r);
@@ -31,10 +39,11 @@ export async function passwordSignIn(username: string, password: string) {
 
 export async function passkeySignInStart(username: string) {
   const r = await client().send(
-    new InitiateAuthCommand({
+    new AdminInitiateAuthCommand({
+      UserPoolId: UserPoolId(),
       ClientId: ClientId(),
       AuthFlow: "USER_AUTH",
-      AuthParameters: { USERNAME: username, PREFERRED_CHALLENGE: "WEB_AUTHN" },
+      AuthParameters: { USERNAME: username, PREFERRED_CHALLENGE: "WEB_AUTHN", SECRET_HASH: secretHash(username) },
     }),
   );
   if (r.ChallengeName !== "WEB_AUTHN" || !r.Session) throw new Error(`unexpected challenge ${r.ChallengeName}`);
@@ -43,16 +52,18 @@ export async function passkeySignInStart(username: string) {
 
 export async function passkeySignInFinish(username: string, session: string, credential: unknown) {
   const r = await client().send(
-    new RespondToAuthChallengeCommand({
+    new AdminRespondToAuthChallengeCommand({
+      UserPoolId: UserPoolId(),
       ClientId: ClientId(),
       ChallengeName: "WEB_AUTHN",
       Session: session,
-      ChallengeResponses: { USERNAME: username, CREDENTIAL: JSON.stringify(credential) },
+      ChallengeResponses: { USERNAME: username, CREDENTIAL: JSON.stringify(credential), SECRET_HASH: secretHash(username) },
     }),
   );
   return tokenOf(r);
 }
 
+// Registration is authorized by the signed-in user's access token, which never leaves the server.
 export async function passkeyRegisterStart(accessToken: string) {
   const r = await client().send(new StartWebAuthnRegistrationCommand({ AccessToken: accessToken }));
   return r.CredentialCreationOptions;

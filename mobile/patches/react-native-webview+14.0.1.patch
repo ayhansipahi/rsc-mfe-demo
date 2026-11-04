@@ -7,7 +7,7 @@ index f83033b..3e0cb45 100644
          settings.allowUniversalAccessFromFileURLs = false
          settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
 +        // Passkeys inside the WebView: Credential Manager answers navigator.credentials for origins
-+        // this app is linked to through assetlinks.json (androidx.webkit 1.12+, Android 14+).
++        // this app is linked to through assetlinks.json (androidx.webkit 1.12+, gated at runtime by isFeatureSupported).
 +        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)) {
 +            WebSettingsCompat.setWebAuthenticationSupport(settings, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP)
 +        }
