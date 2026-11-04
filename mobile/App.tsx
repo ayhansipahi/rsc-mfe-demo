@@ -41,9 +41,8 @@ export default function App() {
                 sharedCookiesEnabled
                 allowsBackForwardNavigationGestures
                 // Anything off-origin would leave the product; keep it inside the shell's one domain.
-                onShouldStartLoadWithRequest={(req) =>
-                  req.url.startsWith(ORIGIN)
-                }
+                // Compare origins, not prefixes: a startsWith check also matches look-alike hosts.
+                onShouldStartLoadWithRequest={(req) => new URL(req.url).origin === ORIGIN}
               />
             </View>
           ))}
