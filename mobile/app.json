@@ -8,9 +8,14 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "sh.sph.rscmfe",
-      "appleTeamId": "H8N47UY3F8",
+      "appleTeamId": "3EWL9B9GPV",
       "supportsTablet": false,
-      "associatedDomains": ["webcredentials:drmu1m8lh4l6k.cloudfront.net?mode=developer"]
+      "associatedDomains": [
+        "webcredentials:rscmfe.sph.sh"
+      ],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "sh.sph.rscmfe",
@@ -21,6 +26,12 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c5038600-e288-440c-849f-e137a64bcc7b"
+      }
+    },
+    "owner": "ayhansipahi"
   }
 }

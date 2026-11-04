@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
-export const ORIGIN = "https://drmu1m8lh4l6k.cloudfront.net";
+export const ORIGIN = "https://rscmfe.sph.sh";
 // Appended to the User-Agent. The web app keys its chrome off it and renders pages without the web nav.
 const SHELL_UA = "RSCShell/1";
 
