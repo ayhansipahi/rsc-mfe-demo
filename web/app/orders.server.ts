@@ -1,26 +1,26 @@
-// The orders service is a Lambda with no URL and no API Gateway. The only way in is
-// lambda:InvokeFunction, which the web function's execution role has and nothing else does.
-// Identity is passed as data: the service trusts the caller because IAM already did.
-import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
-import type { SessionUser } from "./session.server";
-
-let cached: LambdaClient | undefined;
-const lambda = () => (cached ??= new LambdaClient({ region: process.env.AWS_REGION ?? process.env.COGNITO_USER_POOL_ID!.split("_")[0] }));
+// The orders vertical owns its data. There is no orders service to call: the web function reads
+// the table directly, and the only thing standing between the page and the rows is this
+// function's execution role, which can Query one table and nothing else.
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
 export interface Order {
-  id: string;
+  orderId: string;
   item: string;
-  total: number;
+  total: string;
 }
 
-export async function listOrders(user: SessionUser): Promise<Order[]> {
-  const out = await lambda().send(
-    new InvokeCommand({
-      FunctionName: process.env.ORDERS_FUNCTION!,
-      Payload: JSON.stringify({ sub: user.sub, username: user.username }),
+let doc: DynamoDBDocumentClient | undefined;
+
+export async function listOrders(user: { sub: string }): Promise<Order[]> {
+  doc ??= DynamoDBDocumentClient.from(new DynamoDBClient({}));
+  const out = await doc.send(
+    new QueryCommand({
+      TableName: process.env.ORDERS_TABLE!,
+      KeyConditionExpression: "#owner = :sub",
+      ExpressionAttributeNames: { "#owner": "owner" },
+      ExpressionAttributeValues: { ":sub": user.sub },
     }),
   );
-  const body = JSON.parse(out.Payload!.transformToString());
-  if (out.FunctionError) throw new Error(body.errorMessage ?? out.FunctionError);
-  return body.orders;
+  return (out.Items ?? []) as Order[];
 }

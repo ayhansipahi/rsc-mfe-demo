@@ -14,7 +14,7 @@ npm prune --omit=dev
 aws lambda-web deploy --region "$REGION" --name "$NAME" --code . --execution-role-arn "$ROLE_ARN" \
   ${CREATE:+--create --auth-type ApplicationManaged} \
   --env COGNITO_USER_POOL_ID="$COGNITO_USER_POOL_ID" --env COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
-  --env ORDERS_FUNCTION=rsc-mfe-orders --env VERTICAL="$VERTICAL" \
+  --env ORDERS_TABLE=rsc-mfe-orders --env VERTICAL="$VERTICAL" \
   ${PUBLIC_HOST:+--env PUBLIC_HOST="$PUBLIC_HOST"} \
   ${APPLE_APP_IDS:+--env APPLE_APP_IDS="$APPLE_APP_IDS"} \
   ${ANDROID_PACKAGE:+--env ANDROID_PACKAGE="$ANDROID_PACKAGE"} \

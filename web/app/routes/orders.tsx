@@ -40,16 +40,16 @@ export function ServerComponent({ loaderData }: { loaderData: { email: string; o
         </thead>
         <tbody>
           {loaderData.orders.map((o) => (
-            <tr key={o.id} className="border-t border-neutral-200 dark:border-neutral-800">
-              <td className="py-1 font-mono">{o.id}</td>
+            <tr key={o.orderId} className="border-t border-neutral-200 dark:border-neutral-800">
+              <td className="py-1 font-mono">{o.orderId}</td>
               <td className="py-1">{o.item}</td>
-              <td className="py-1 text-right">{o.total.toFixed(2)}</td>
+              <td className="py-1 text-right">{o.total}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <p className="text-xs text-neutral-500">
-        Fetched by the server component through lambda:InvokeFunction. The service has no URL.
+        Read by the server component from a table only this vertical&apos;s role can query. Nothing behind this page has a URL.
       </p>
       <RegisterPasskey />
     </main>
