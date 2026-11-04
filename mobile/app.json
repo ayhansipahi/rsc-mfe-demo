@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "RSC Shell",
+    "slug": "rsc-mfe-shell",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "sh.sph.rscmfe",
+      "appleTeamId": "H8N47UY3F8",
+      "supportsTablet": false,
+      "associatedDomains": ["webcredentials:drmu1m8lh4l6k.cloudfront.net?mode=developer"]
+    },
+    "android": {
+      "package": "sh.sph.rscmfe",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    }
+  }
+}

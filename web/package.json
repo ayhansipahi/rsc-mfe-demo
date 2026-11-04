@@ -1,0 +1,35 @@
+{
+  "name": "rsc-mfe-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "start": "node index.js",
+    "typecheck": "react-router typegen && tsc",
+    "postinstall": "node scripts/patch-react-router.mjs"
+  },
+  "dependencies": {
+    "@remix-run/node-fetch-server": "0.13.0",
+    "compression": "1.8.2",
+    "express": "5.3.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router": "^8.5.1",
+    "@aws-sdk/client-cognito-identity-provider": "^3.900.0",
+    "@aws-sdk/client-lambda": "^3.900.0",
+    "@simplewebauthn/browser": "^13.0.0",
+    "aws-jwt-verify": "^5.0.0"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^8.5.1",
+    "@tailwindcss/vite": "4.2.2",
+    "@types/node": "24.5.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-rsc": "0.5.35",
+    "tailwindcss": "4.2.2",
+    "typescript": "5.9.3",
+    "vite": "8.3.5"
+  }
+}

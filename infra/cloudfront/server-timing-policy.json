@@ -1,0 +1,5 @@
+{
+  "Name": "rr-rsc-webfn-server-timing",
+  "Comment": "Expose CloudFront Server-Timing (upstream connect, first byte) on every response",
+  "ServerTimingHeadersConfig": { "Enabled": true, "SamplingRate": 100 }
+}

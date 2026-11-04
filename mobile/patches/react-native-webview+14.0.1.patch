@@ -1,0 +1,16 @@
+diff --git a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManagerImpl.kt b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManagerImpl.kt
+index f83033b..3e0cb45 100644
+--- a/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManagerImpl.kt
++++ b/node_modules/react-native-webview/android/src/main/java/com/reactnativecommunity/webview/RNCWebViewManagerImpl.kt
+@@ -82,6 +82,11 @@ class RNCWebViewManagerImpl(private val newArch: Boolean = false) {
+         settings.allowFileAccessFromFileURLs = false
+         settings.allowUniversalAccessFromFileURLs = false
+         settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
++        // Passkeys inside the WebView: Credential Manager answers navigator.credentials for origins
++        // this app is linked to through assetlinks.json (androidx.webkit 1.12+, Android 14+).
++        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)) {
++            WebSettingsCompat.setWebAuthenticationSupport(settings, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP)
++        }
+ 
+         // Fixes broken full-screen modals/galleries due to body height being 0.
+         webView.layoutParams = ViewGroup.LayoutParams(
