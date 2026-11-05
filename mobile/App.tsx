@@ -7,7 +7,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { StatusBar } from "expo-status-bar";
 import { useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
@@ -32,12 +32,14 @@ interface Tab {
 }
 
 // The tab bar is the shell's auth UI. Signed out, the tabs that need a session are not in the bar
-// and a Sign in tab is, so no tab ever opens on a login page. Signed in, that slot is the account icon.
+// and a Sign in tab is, so no tab ever opens on a login page. Signed in, that slot is the Account
+// tab: the account vertical's page with passkeys and sign out.
 const tabs: Tab[] = [
   { key: "home", label: "Home", path: "/", icon: "home-outline" },
   { key: "store", label: "Store", path: "/store", icon: "storefront-outline" },
   { key: "cart", label: "Cart", path: "/store/cart", icon: "cart-outline", auth: true },
   { key: "orders", label: "Orders", path: "/orders", icon: "receipt-outline", auth: true },
+  { key: "account", label: "Account", path: "/account", icon: "person-circle", auth: true },
   { key: "signin", label: "Sign in", path: "/login?next=/store", icon: "person-circle-outline", auth: false },
 ];
 
@@ -49,7 +51,6 @@ type ShellMessage =
 export default function App() {
   const theme = themes[useColorScheme() === "dark" ? "dark" : "light"];
   const [active, setActive] = useState("home");
-  const [email, setEmail] = useState<string>();
   const [signedIn, setSignedIn] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   // Bumped when the session flips: every tab reloads, so no page keeps rendering the old session.
@@ -77,7 +78,6 @@ export default function App() {
       const flipped = knownSession.current !== null && knownSession.current !== msg.signedIn;
       knownSession.current = msg.signedIn;
       setSignedIn(msg.signedIn);
-      setEmail(msg.email);
       if (flipped) {
         setEpoch((n) => n + 1);
         setActive((msg.signedIn && returnTo.current) || "store");
@@ -91,21 +91,6 @@ export default function App() {
     // A page-side reload, not WebView.reload(): that one shows the library's white loading view.
     if (key === "cart") views.current.cart?.injectJavaScript("location.reload();true;");
     setActive(key);
-  }
-
-  function openAccount() {
-    Alert.alert(email ?? "Account", undefined, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        // The logout action clears the HttpOnly cookie; the reload makes the page report the new session.
-        onPress: () =>
-          views.current[active]?.injectJavaScript(
-            "fetch('/logout',{method:'POST'}).finally(()=>location.reload());true;",
-          ),
-      },
-    ]);
   }
 
   return (
@@ -159,12 +144,6 @@ export default function App() {
               </Pressable>
             );
           })}
-          {signedIn && (
-            <Pressable onPress={openAccount} style={styles.tab} accessibilityLabel={`Account ${email ?? ""}`}>
-              <Ionicons name="person-circle" size={22} color={theme.active} />
-              <Text style={[styles.label, { color: theme.label }]}>Account</Text>
-            </Pressable>
-          )}
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

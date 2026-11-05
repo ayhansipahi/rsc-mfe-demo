@@ -8,6 +8,7 @@ const account = [
   index("routes/home.tsx"),
   route("login", "routes/login.tsx"),
   route("logout", "routes/logout.ts"),
+  route("account", "routes/account.tsx"),
   // Resource routes (no component): the passkey ceremony's server half and the session contract.
   route("auth/passkey", "routes/auth.passkey.ts"),
   route("auth/me", "routes/auth.me.ts"),

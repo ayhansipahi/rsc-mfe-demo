@@ -1,8 +1,6 @@
 import { redirect } from "react-router";
 import { listOrders, type Order } from "../orders.server";
-import { RegisterPasskey } from "../register-passkey";
 import { getUser } from "../session.server";
-import { buttonClass } from "../styles";
 
 export function meta() {
   return [{ title: "Orders" }];
@@ -22,14 +20,7 @@ export async function loader({ request }: { request: Request }) {
 export function ServerComponent({ loaderData }: { loaderData: { email: string; orders: Order[] } }) {
   return (
     <main className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Orders for {loaderData.email}</h1>
-        <form method="post" action="/logout">
-          <button type="submit" className={buttonClass}>
-            Sign out
-          </button>
-        </form>
-      </div>
+      <h1 className="text-2xl font-semibold">Orders for {loaderData.email}</h1>
       <table className="w-full text-sm">
         <thead className="text-left text-neutral-500">
           <tr>
@@ -51,7 +42,6 @@ export function ServerComponent({ loaderData }: { loaderData: { email: string; o
       <p className="text-xs text-neutral-500">
         Read by the server component from a table only this vertical&apos;s role can query. Nothing behind this page has a URL.
       </p>
-      <RegisterPasskey />
     </main>
   );
 }

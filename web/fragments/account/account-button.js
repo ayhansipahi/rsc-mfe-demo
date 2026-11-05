@@ -8,10 +8,9 @@ const style = `
   :host { display: inline-flex; align-items: center; gap: 8px; font: 14px/1.2 ui-sans-serif, system-ui, sans-serif; }
   a, button { font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px;
     background: var(--bg); text-decoration: none; cursor: pointer; }
-  .who { color: var(--muted); max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  form { margin: 0; }
-  :host { --bg: #fff; --line: #d4d4d4; --muted: #525252; }
-  @media (prefers-color-scheme: dark) { :host { --bg: #171717; --line: #404040; --muted: #a3a3a3; } }
+  .who { max-width: 20ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :host { --bg: #fff; --line: #d4d4d4; }
+  @media (prefers-color-scheme: dark) { :host { --bg: #171717; --line: #404040; } }
 `;
 
 const escape = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -38,8 +37,8 @@ class AccountButton extends HTMLElement {
     this.shadowRoot.innerHTML =
       `<style>${style}</style>` +
       (me.signedIn
-        ? `<span class="who" title="${escape(me.email)}">${escape(me.email)}</span>
-           <form method="post" action="/logout"><button type="submit">Sign out</button></form>`
+        ? // Signed in: who you are, linking to the account page that holds passkeys and sign out.
+          `<a class="who" href="/account" title="${escape(me.email)}">${escape(me.email)}</a>`
         : `<a href="/login${next}">Sign in</a>`);
   }
 }
