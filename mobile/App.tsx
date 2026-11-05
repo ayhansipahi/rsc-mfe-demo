@@ -4,10 +4,13 @@
 // picks URLs. Not sharedCookiesEnabled: it copies cookies into the app's native jar but never
 // deletes them there, then seeds every new WebView from that jar, so a signed-out session returns.
 // The pages tell the shell UI state (signed in or not, cart count) over postMessage, never a token.
+// One native capability sits on top: a Face ID lock on launch and on return from the background. It
+// gates the screen, not the session; signing in stays the page's passkey ceremony.
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as LocalAuthentication from "expo-local-authentication";
 import { StatusBar } from "expo-status-bar";
-import { useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { AppState, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
@@ -58,6 +61,34 @@ export default function App() {
   const knownSession = useRef<boolean | null>(null);
   const returnTo = useRef<string | null>(null);
   const views = useRef<Record<string, { injectJavaScript(js: string): void } | null>>({});
+  const [locked, setLocked] = useState(false);
+  // Set on launch and on every trip to the background; the next known session decides. A guest has
+  // nothing to protect, and a sign-in that just happened was itself Face ID, so neither locks.
+  const needsUnlock = useRef(true);
+
+  async function unlock() {
+    const result = await LocalAuthentication.authenticateAsync({ promptMessage: "Unlock RSC Shell" });
+    if (result.success) setLocked(false);
+  }
+
+  async function lock() {
+    // Cover the screen first, then ask. No Face ID or fingerprint enrolled: nothing to unlock with.
+    setLocked(true);
+    if (!(await LocalAuthentication.isEnrolledAsync())) return setLocked(false);
+    await unlock();
+  }
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      // ponytail: locks on every return; add a grace period if quick app switches get annoying.
+      if (state === "background") needsUnlock.current = true;
+      else if (state === "active" && needsUnlock.current && knownSession.current !== null) {
+        needsUnlock.current = false;
+        if (knownSession.current) lock();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   const visible = tabs.filter((tab) => tab.auth === undefined || tab.auth === signedIn);
 
@@ -75,6 +106,10 @@ export default function App() {
       setActive("signin");
     }
     if (msg.type === "session") {
+      if (needsUnlock.current) {
+        needsUnlock.current = false;
+        if (msg.signedIn) lock();
+      }
       const flipped = knownSession.current !== null && knownSession.current !== msg.signedIn;
       knownSession.current = msg.signedIn;
       setSignedIn(msg.signedIn);
@@ -145,6 +180,15 @@ export default function App() {
             );
           })}
         </View>
+        {locked && (
+          <View style={[StyleSheet.absoluteFill, styles.lock, { backgroundColor: theme.bg }]}>
+            <Ionicons name="lock-closed-outline" size={40} color={theme.active} />
+            <Text style={[styles.lockTitle, { color: theme.active }]}>RSC Shell is locked</Text>
+            <Pressable onPress={unlock} style={[styles.lockButton, { borderColor: theme.border }]}>
+              <Text style={{ color: theme.active }}>{Platform.OS === "ios" ? "Unlock with Face ID" : "Unlock"}</Text>
+            </Pressable>
+          </View>
+        )}
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -174,4 +218,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   badgeText: { fontSize: 10, fontWeight: "700" },
+  lock: { alignItems: "center", justifyContent: "center", gap: 16 },
+  lockTitle: { fontSize: 17, fontWeight: "600" },
+  lockButton: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
 });

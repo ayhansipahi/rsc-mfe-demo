@@ -27,6 +27,14 @@
       },
       "predictiveBackGestureEnabled": false
     },
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "RSC Shell uses Face ID to unlock the app."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "c5038600-e288-440c-849f-e137a64bcc7b"
