@@ -27,8 +27,10 @@ export function Nav() {
         </NavLink>
       ))}
       {/* Fragments owned by other verticals: the store's mini cart and the account's sign-in
-          button. This vertical renders the tags; each owner serves the script that fills them. */}
-      <div className="ml-auto flex items-center gap-2">
+          button. This vertical renders the tags; each owner serves the script that fills them.
+          They fill in after load, so each draws a 32px box like the links (18px line, 6px padding,
+          1px border) and the email shrinks before anything wraps: the nav keeps its height. */}
+      <div className="ml-auto flex min-w-0 items-center gap-2">
         <rsc-mini-cart />
         <rsc-account-button />
       </div>

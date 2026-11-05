@@ -37,10 +37,12 @@ const bases = { orders: "/orders-static", store: "/store-static" };
 const base = bases[vertical] ?? "";
 app.use(`${base}/assets`, express.static("build/client/assets", { immutable: true, maxAge: "1y" }));
 // Each vertical serves only its own fragments (fragments/<vertical>/): the account button at
-// /fragments/, the mini cart at /store-static/fragments/. Not content-hashed, so always revalidate.
+// /fragments/, the mini cart at /store-static/fragments/. Not content-hashed, so a short TTL: an
+// owner's change is live within about two minutes (edge plus browser), and page views in between
+// skip the round trip. ponytail: version the URLs if instant rollout ever matters.
 const fragmentMounts = vertical === "all" ? [["", "account"], ["/store-static", "store"]] : [[base, vertical]];
 for (const [mount, owner] of fragmentMounts) {
-  app.use(`${mount}/fragments`, express.static(`fragments/${owner}`, { setHeaders: (res) => res.setHeader("Cache-Control", "no-cache") }));
+  app.use(`${mount}/fragments`, express.static(`fragments/${owner}`, { setHeaders: (res) => res.setHeader("Cache-Control", "public, max-age=60") }));
 }
 app.use(
   base || "/",
