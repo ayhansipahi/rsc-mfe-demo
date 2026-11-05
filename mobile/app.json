@@ -2,6 +2,7 @@
   "expo": {
     "name": "RSC Shell",
     "slug": "rsc-mfe-shell",
+    "scheme": "rscshell",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -41,7 +42,8 @@
           "photosPermission": "RSC Shell opens a photo you pick to find products in it.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-router"
     ],
     "extra": {
       "eas": {
