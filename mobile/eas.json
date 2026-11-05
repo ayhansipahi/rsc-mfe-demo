@@ -6,13 +6,23 @@
   "build": {
     "production": {
       "autoIncrement": true,
-      "ios": { "resourceClass": "m-medium" },
-      "android": { "buildType": "app-bundle" }
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {
     "production": {
-      "android": { "track": "internal", "releaseStatus": "draft" }
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      },
+      "ios": {
+        "ascAppId": "6830774732"
+      }
     }
   }
 }

@@ -29,6 +29,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Tells the browser (and the shell's WebView) both themes exist, so the canvas and form
+            controls follow the device before the stylesheet applies. */}
+        <meta name="color-scheme" content="light dark" />
         <Meta />
         <Links />
       </head>

@@ -2,6 +2,7 @@
 
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useState } from "react";
+import { usePasskeySupport } from "./passkey-support";
 import { buttonClass, inputClass } from "./styles";
 
 async function post(body: unknown) {
@@ -17,6 +18,7 @@ async function post(body: unknown) {
 export function LoginForm({ error }: { error: string | null }) {
   const [status, setStatus] = useState<string | null>(error === "password" ? "Wrong email or password." : null);
   const [busy, setBusy] = useState(false);
+  const passkeys = usePasskeySupport();
 
   async function passkey(form: HTMLFormElement) {
     const email = (form.elements.namedItem("email") as HTMLInputElement).value;
@@ -49,10 +51,17 @@ export function LoginForm({ error }: { error: string | null }) {
         <button type="submit" disabled={busy} className={buttonClass}>
           Sign in with password
         </button>
-        <button type="button" disabled={busy} onClick={(e) => passkey(e.currentTarget.form!)} className={buttonClass}>
-          Sign in with passkey
-        </button>
+        {passkeys !== false && (
+          <button type="button" disabled={busy} onClick={(e) => passkey(e.currentTarget.form!)} className={buttonClass}>
+            Sign in with passkey
+          </button>
+        )}
       </div>
+      {passkeys === false && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Passkeys are not available in this app on this device. Sign in with your password.
+        </p>
+      )}
       {status && <p className="text-sm text-neutral-600 dark:text-neutral-400">{status}</p>}
     </form>
   );
