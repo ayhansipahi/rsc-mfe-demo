@@ -1,7 +1,7 @@
 // The only code that talks to Cognito. The browser never does: the ceremony's options and
-// results travel through /auth/passkey. The app client is confidential (it has a secret), and
-// sign-in uses the Admin* operations, which require IAM credentials: this function's execution
-// role is the only principal that can start or finish a sign-in for this client.
+// results travel through /auth/passkey. The app client is confidential: every sign-in call, public
+// or Admin*, needs a SECRET_HASH, and the secret lives only in this function's environment. The
+// Admin* operations used here also require IAM credentials, a second layer on top of the secret.
 import { createHmac } from "node:crypto";
 import {
   AdminInitiateAuthCommand,

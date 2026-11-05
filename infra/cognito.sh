@@ -13,8 +13,8 @@ POOL=$(aws cognito-idp create-user-pool --region "$REGION" --pool-name rsc-mfe-d
   --query UserPool.Id --output text)
 aws cognito-idp set-user-pool-mfa-config --region "$REGION" --user-pool-id "$POOL" --mfa-configuration OFF \
   --web-authn-configuration "{\"RelyingPartyId\":\"$RP\",\"UserVerification\":\"required\"}" >/dev/null
-# A confidential client: the secret stays in the web function's environment, and sign-in goes through
-# the Admin* operations under IAM, so no browser can start a sign-in for this client on its own.
+# A confidential client: every sign-in call needs a hash of the secret, which stays in the web function's
+# environment. The Admin* operations the app uses add IAM on top; ALLOW_USER_AUTH also admits the public calls.
 read -r CLIENT SECRET < <(aws cognito-idp create-user-pool-client --region "$REGION" --user-pool-id "$POOL" --client-name web-confidential \
   --explicit-auth-flows ALLOW_USER_AUTH ALLOW_REFRESH_TOKEN_AUTH --generate-secret --auth-session-validity 15 \
   --query 'UserPoolClient.[ClientId,ClientSecret]' --output text)
