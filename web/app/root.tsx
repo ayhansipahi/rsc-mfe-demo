@@ -28,7 +28,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* Tells the browser (and the shell's WebView) both themes exist, so the canvas and form
             controls follow the device before the stylesheet applies. */}
         <meta name="color-scheme" content="light dark" />
@@ -44,9 +43,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Browsers keep pinch-zoom for accessibility. Inside the shell the page is the app's screen, so
+// zoom is off there: a WKWebView honours maximum-scale and user-scalable unless the app opts out.
+// React hoists this <meta> into <head>.
+const viewport = "width=device-width, initial-scale=1";
+const shellViewport = `${viewport}, maximum-scale=1, user-scalable=no`;
+
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <>
+      <meta name="viewport" content={loaderData.shell ? shellViewport : viewport} />
       {loaderData.shell ? null : <Nav />}
       <div className="mx-auto max-w-3xl space-y-4 p-6">
         <Outlet />
@@ -73,6 +79,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   return (
     <main className="container p-4 pt-16 mx-auto">
+      <meta name="viewport" content={viewport} />
       <h1>{message}</h1>
       <p>{details}</p>
       {stack && (
