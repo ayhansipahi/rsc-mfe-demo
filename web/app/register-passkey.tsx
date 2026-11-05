@@ -17,6 +17,7 @@ async function post(body: unknown) {
 
 export function RegisterPasskey() {
   const [status, setStatus] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const passkeys = usePasskeySupport();
 
   async function register() {
@@ -25,6 +26,7 @@ export function RegisterPasskey() {
       const start = await post({ intent: "register-start" });
       const credential = await startRegistration({ optionsJSON: start.options });
       await post({ intent: "register-finish", credential });
+      setSaved(true);
       setStatus("Passkey saved. Sign out and sign in with it.");
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e));
@@ -35,7 +37,7 @@ export function RegisterPasskey() {
     <div className="space-y-2 border-t border-neutral-200 pt-4 dark:border-neutral-800">
       {passkeys === false ? (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">Passkeys are not available in this app on this device.</p>
-      ) : (
+      ) : saved ? null : (
         <button type="button" onClick={register} className={buttonClass}>
           Add a passkey for this device
         </button>

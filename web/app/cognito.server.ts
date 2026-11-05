@@ -8,6 +8,7 @@ import {
   AdminRespondToAuthChallengeCommand,
   CognitoIdentityProviderClient,
   CompleteWebAuthnRegistrationCommand,
+  ListWebAuthnCredentialsCommand,
   StartWebAuthnRegistrationCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
@@ -71,4 +72,14 @@ export async function passkeyRegisterStart(accessToken: string) {
 
 export async function passkeyRegisterFinish(accessToken: string, credential: unknown) {
   await client().send(new CompleteWebAuthnRegistrationCommand({ AccessToken: accessToken, Credential: credential as never }));
+}
+
+// The account's passkeys for this site. Cognito keeps one list per user across devices, and a
+// browser never tells a site which device holds a passkey, so "has a passkey" is per account.
+// Only this relying party's credentials count: a passkey made for another domain cannot sign in here.
+// ponytail: first page only (Cognito's default page size); paginate if accounts carry many passkeys.
+export async function listPasskeys(accessToken: string) {
+  const r = await client().send(new ListWebAuthnCredentialsCommand({ AccessToken: accessToken }));
+  const rp = process.env.PUBLIC_HOST;
+  return (r.Credentials ?? []).filter((c) => !rp || c.RelyingPartyId === rp);
 }
