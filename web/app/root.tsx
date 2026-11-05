@@ -8,6 +8,7 @@ import {
 
 import type { Route } from "./+types/root";
 import { Nav } from "./nav";
+import { PhotoSearch } from "./photo-search";
 import "./app.css";
 
 // The chrome is per client: the mobile shell announces itself in the User-Agent and draws its own
@@ -68,10 +69,14 @@ export default function App({ loaderData }: Route.ComponentProps) {
       {/* In the shell the fragments draw nothing; they report the session and the cart count to
           the native tab bar. On the web they sit in the nav. */}
       {loaderData.shell ? (
-        <div hidden>
-          <rsc-account-button />
-          <rsc-mini-cart />
-        </div>
+        <>
+          <div hidden>
+            <rsc-account-button />
+            <rsc-mini-cart />
+          </div>
+          {/* Listens for the shell camera's photo on any page of the Store tab. */}
+          <PhotoSearch />
+        </>
       ) : (
         <Nav />
       )}

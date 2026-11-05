@@ -20,6 +20,8 @@ const store = [
   route("store/cart", "routes/store.cart.tsx"),
   // Resource route: the cart contract the mini-cart fragment reads from any vertical's page.
   route("store/api/cart", "routes/store.api.cart.ts"),
+  // Resource route: the mobile shell's camera photo, posted by the page, matched to the catalog.
+  route("store/api/photo-search", "routes/store.api.photo-search.ts"),
 ];
 const verticals: Record<string, typeof account> = { account, orders, store };
 
