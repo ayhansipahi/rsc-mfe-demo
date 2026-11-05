@@ -1,6 +1,6 @@
 import { redirect, redirectDocument } from "react-router";
 import { confirmSignUp, resendCode, signInAfterSignUp, signUp } from "../cognito.server";
-import { getUser, sessionCookie } from "../session.server";
+import { getUser, signInCookies } from "../session.server";
 import { buttonClass, inputClass } from "../styles";
 
 export function meta() {
@@ -111,7 +111,7 @@ export async function action({ request }: { request: Request }) {
     : null;
   const headers = new Headers({ "Set-Cookie": pendingCookie(null) });
   if (!token) return redirect("/login?error=confirmed&next=/account", { headers });
-  headers.append("Set-Cookie", sessionCookie(token));
+  signInCookies(token, pending.email, headers);
   // A document load: every fragment on the account page reads the new session, and in the shell
   // the account fragment's session message flips the tab bar.
   return redirectDocument("/account", { headers });

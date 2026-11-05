@@ -1,7 +1,7 @@
 // Server half of both passkey ceremonies. The browser sends the raw WebAuthn JSON; this
 // route forwards it to Cognito and turns the result into the session cookie.
 import { passkeyRegisterFinish, passkeyRegisterStart, passkeySignInFinish, passkeySignInStart } from "../cognito.server";
-import { getUser, sessionCookie } from "../session.server";
+import { getUser, signInCookies } from "../session.server";
 
 const noStore = { "Cache-Control": "private, no-store" };
 
@@ -17,7 +17,7 @@ export async function action({ request }: { request: Request }) {
         return Response.json(await passkeySignInStart(String(body.email)), { headers: noStore });
       case "signin-finish": {
         const token = await passkeySignInFinish(String(body.email), String(body.session), body.credential);
-        return new Response(null, { status: 204, headers: { ...noStore, "Set-Cookie": sessionCookie(token) } });
+        return new Response(null, { status: 204, headers: signInCookies(token, String(body.email), new Headers(noStore)) });
       }
       case "register-start": {
         const user = await getUser(request);

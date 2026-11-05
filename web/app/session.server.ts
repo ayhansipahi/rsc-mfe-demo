@@ -38,3 +38,23 @@ export async function getUser(request: Request): Promise<SessionUser | null> {
 export const sessionCookie = (token: string) =>
   `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`;
 export const clearedCookie = `${COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+
+// The email of the last account signed in on this device, kept past sign-out and session expiry so the
+// login page can offer "Continue as" with a passkey: Cognito's passkey sign-in starts from a username.
+// Only /login receives it, and it holds no credential.
+const LAST = "last_email";
+export function readLastEmail(request: Request): string | null {
+  const raw = request.headers.get("cookie")?.match(new RegExp(`(?:^|;\\s*)${LAST}=([^;]+)`))?.[1];
+  try {
+    return raw ? decodeURIComponent(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Every sign-in sets both cookies.
+export function signInCookies(token: string, email: string, headers = new Headers()) {
+  headers.append("Set-Cookie", sessionCookie(token));
+  headers.append("Set-Cookie", `${LAST}=${encodeURIComponent(email)}; Path=/login; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000`);
+  return headers;
+}
