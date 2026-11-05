@@ -27,7 +27,8 @@ export async function loader({ request }: { request: Request }) {
 // Password path: plain form POST, then POST/redirect/GET with the cookie on the redirect.
 export async function action({ request }: { request: Request }) {
   const form = await request.formData();
-  const email = String(form.get("email") ?? "");
+  // Sign-up stores the email lowercased as the username.
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   const next = safeNext(form.get("next"));
   const token = await passwordSignIn(email, password).catch(() => null);
@@ -41,6 +42,12 @@ export function ServerComponent({ loaderData }: { loaderData: { error: string | 
     <main className="space-y-4">
       <h1 className="text-2xl font-semibold">Sign in</h1>
       <LoginForm error={loaderData.error} next={loaderData.next} />
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        New here?{" "}
+        <a href="/signup" className="underline">
+          Create an account
+        </a>
+      </p>
     </main>
   );
 }

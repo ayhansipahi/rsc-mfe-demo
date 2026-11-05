@@ -7,6 +7,7 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
 const account = [
   index("routes/home.tsx"),
   route("login", "routes/login.tsx"),
+  route("signup", "routes/signup.tsx"),
   route("logout", "routes/logout.ts"),
   route("account", "routes/account.tsx"),
   // Resource routes (no component): the passkey ceremony's server half and the session contract.

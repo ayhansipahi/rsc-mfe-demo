@@ -8,7 +8,10 @@ import {
   AdminRespondToAuthChallengeCommand,
   CognitoIdentityProviderClient,
   CompleteWebAuthnRegistrationCommand,
+  ConfirmSignUpCommand,
   ListWebAuthnCredentialsCommand,
+  ResendConfirmationCodeCommand,
+  SignUpCommand,
   StartWebAuthnRegistrationCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
@@ -59,6 +62,47 @@ export async function passkeySignInFinish(username: string, session: string, cre
       ChallengeName: "WEB_AUTHN",
       Session: session,
       ChallengeResponses: { USERNAME: username, CREDENTIAL: JSON.stringify(credential), SECRET_HASH: secretHash(username) },
+    }),
+  );
+  return tokenOf(r);
+}
+
+// Sign-up is the one write anyone can start. The account stays unconfirmed until the code Cognito
+// emails comes back, and Cognito's own sender caps the pool at 50 emails a day.
+export async function signUp(email: string, password: string) {
+  const r = await client().send(
+    new SignUpCommand({
+      ClientId: ClientId(),
+      SecretHash: secretHash(email),
+      Username: email,
+      Password: password,
+      UserAttributes: [{ Name: "email", Value: email }],
+    }),
+  );
+  return r.Session;
+}
+
+export async function confirmSignUp(email: string, code: string, session?: string) {
+  const r = await client().send(
+    new ConfirmSignUpCommand({ ClientId: ClientId(), SecretHash: secretHash(email), Username: email, ConfirmationCode: code, Session: session }),
+  );
+  return r.Session;
+}
+
+export async function resendCode(email: string) {
+  await client().send(new ResendConfirmationCodeCommand({ ClientId: ClientId(), SecretHash: secretHash(email), Username: email }));
+}
+
+// The emailed code already proved the address: ConfirmSignUp's session signs the user in without
+// asking for the password again. Valid once, within the client's auth session duration (15 min).
+export async function signInAfterSignUp(email: string, session: string) {
+  const r = await client().send(
+    new AdminInitiateAuthCommand({
+      UserPoolId: UserPoolId(),
+      ClientId: ClientId(),
+      AuthFlow: "USER_AUTH",
+      AuthParameters: { USERNAME: email, SECRET_HASH: secretHash(email) },
+      Session: session,
     }),
   );
   return tokenOf(r);

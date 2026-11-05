@@ -16,7 +16,9 @@ async function post(body: unknown) {
 }
 
 export function LoginForm({ error, next }: { error: string | null; next: string }) {
-  const [status, setStatus] = useState<string | null>(error === "password" ? "Wrong email or password." : null);
+  const [status, setStatus] = useState<string | null>(
+    error === "password" ? "Wrong email or password." : error === "confirmed" ? "Your account is confirmed. Sign in to continue." : null,
+  );
   const [busy, setBusy] = useState(false);
   const passkeys = usePasskeySupport();
 
