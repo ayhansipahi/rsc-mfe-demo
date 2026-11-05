@@ -1,4 +1,4 @@
-import { redirect } from "react-router";
+import { redirect, redirectDocument } from "react-router";
 import { passwordSignIn } from "../cognito.server";
 import { LoginForm } from "../login-form";
 import { getUser, sessionCookie } from "../session.server";
@@ -11,9 +11,17 @@ export function headers() {
   return { "Cache-Control": "private, no-store" };
 }
 
+// Only same-origin paths: an absolute or protocol-relative "next" would turn this into an open redirect.
+const safeNext = (value: unknown) =>
+  typeof value === "string" && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\")
+    ? value
+    : "/orders";
+
 export async function loader({ request }: { request: Request }) {
-  if (await getUser(request)) throw redirect("/orders");
-  return { error: new URL(request.url).searchParams.get("error") };
+  const params = new URL(request.url).searchParams;
+  const next = safeNext(params.get("next"));
+  if (await getUser(request)) throw redirect(next);
+  return { error: params.get("error"), next };
 }
 
 // Password path: plain form POST, then POST/redirect/GET with the cookie on the redirect.
@@ -21,16 +29,18 @@ export async function action({ request }: { request: Request }) {
   const form = await request.formData();
   const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
+  const next = safeNext(form.get("next"));
   const token = await passwordSignIn(email, password).catch(() => null);
-  if (!token) return redirect("/login?error=password");
-  return redirect("/orders", { headers: { "Set-Cookie": sessionCookie(token) } });
+  if (!token) return redirect(`/login?error=password&next=${encodeURIComponent(next)}`);
+  // A document load, not a client navigation: every fragment on the next page reads the new session.
+  return redirectDocument(next, { headers: { "Set-Cookie": sessionCookie(token) } });
 }
 
-export function ServerComponent({ loaderData }: { loaderData: { error: string | null } }) {
+export function ServerComponent({ loaderData }: { loaderData: { error: string | null; next: string } }) {
   return (
     <main className="space-y-4">
       <h1 className="text-2xl font-semibold">Sign in</h1>
-      <LoginForm error={loaderData.error} />
+      <LoginForm error={loaderData.error} next={loaderData.next} />
     </main>
   );
 }

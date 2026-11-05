@@ -4,12 +4,13 @@ import { NavLink } from "react-router";
 
 const pages = [
   ["/", "Home"],
+  ["/store", "Store"],
   ["/orders", "Orders"],
 ] as const;
 
 export function Nav() {
   return (
-    <nav className="flex gap-1 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
+    <nav className="flex items-center gap-1 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
       {pages.map(([to, label]) => (
         <NavLink
           key={to}
@@ -25,6 +26,12 @@ export function Nav() {
           {label}
         </NavLink>
       ))}
+      {/* Fragments owned by other verticals: the store's mini cart and the account's sign-in
+          button. This vertical renders the tags; each owner serves the script that fills them. */}
+      <div className="ml-auto flex items-center gap-2">
+        <rsc-mini-cart />
+        <rsc-account-button />
+      </div>
     </nav>
   );
 }

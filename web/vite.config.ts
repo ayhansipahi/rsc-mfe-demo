@@ -5,7 +5,8 @@ import { defineConfig } from "vite";
 
 // Each vertical ships its own client bundle. Assets must reach the function that built them, so
 // the orders build mounts under /orders-static/, which the /orders* CloudFront behavior covers.
-const base = process.env.VERTICAL === "orders" ? "/orders-static/" : "/";
+const bases: Record<string, string> = { orders: "/orders-static/", store: "/store-static/" };
+const base = bases[process.env.VERTICAL ?? ""] ?? "/";
 
 export default defineConfig({
   base,

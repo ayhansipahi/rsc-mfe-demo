@@ -15,7 +15,7 @@ async function post(body: unknown) {
   return r.status === 204 ? null : r.json();
 }
 
-export function LoginForm({ error }: { error: string | null }) {
+export function LoginForm({ error, next }: { error: string | null; next: string }) {
   const [status, setStatus] = useState<string | null>(error === "password" ? "Wrong email or password." : null);
   const [busy, setBusy] = useState(false);
   const passkeys = usePasskeySupport();
@@ -30,7 +30,7 @@ export function LoginForm({ error }: { error: string | null }) {
       const credential = await startAuthentication({ optionsJSON: start.options });
       await post({ intent: "signin-finish", email, session: start.session, credential });
       // Full navigation so the new cookie is on the next document request.
-      window.location.assign("/orders");
+      window.location.assign(next);
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e));
       setBusy(false);
@@ -39,6 +39,7 @@ export function LoginForm({ error }: { error: string | null }) {
 
   return (
     <form method="post" className="max-w-sm space-y-3">
+      <input type="hidden" name="next" value={next} />
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Email</span>
         <input name="email" type="email" autoComplete="username webauthn" required className={inputClass} />

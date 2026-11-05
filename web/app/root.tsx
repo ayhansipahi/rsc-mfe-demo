@@ -49,11 +49,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
 const viewport = "width=device-width, initial-scale=1";
 const shellViewport = `${viewport}, maximum-scale=1, user-scalable=no`;
 
+// Each fragment's script comes from the vertical that owns it, so the store team can change the mini
+// cart without redeploying the verticals that show it. React hoists async scripts into <head>.
+function FragmentScripts() {
+  return (
+    <>
+      <script type="module" src="/fragments/account-button.js" async />
+      <script type="module" src="/store-static/fragments/mini-cart.js" async />
+    </>
+  );
+}
+
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <meta name="viewport" content={loaderData.shell ? shellViewport : viewport} />
-      {loaderData.shell ? null : <Nav />}
+      <FragmentScripts />
+      {/* In the shell the fragments draw nothing; they report the session and the cart count to
+          the native tab bar. On the web they sit in the nav. */}
+      {loaderData.shell ? (
+        <div hidden>
+          <rsc-account-button />
+          <rsc-mini-cart />
+        </div>
+      ) : (
+        <Nav />
+      )}
       <div className="mx-auto max-w-3xl space-y-4 p-6">
         <Outlet />
       </div>

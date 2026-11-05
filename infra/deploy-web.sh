@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds and deploys one web function. First run: CREATE=1 infra/deploy-web.sh
-# Verticals: VERTICAL=account NAME=rsc-mfe-web | VERTICAL=orders NAME=rsc-mfe-orders-web
+# Verticals: VERTICAL=account NAME=rsc-mfe-web | VERTICAL=orders NAME=rsc-mfe-orders-web | VERTICAL=store NAME=rsc-mfe-store-web
 set -euo pipefail
 REGION=${AWS_REGION:-eu-north-1}
 NAME=${NAME:-rsc-mfe-web}
@@ -15,7 +15,7 @@ aws lambda-web deploy --region "$REGION" --name "$NAME" --code . --execution-rol
   ${CREATE:+--create --auth-type ApplicationManaged} \
   --env COGNITO_USER_POOL_ID="$COGNITO_USER_POOL_ID" --env COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
   ${COGNITO_CLIENT_SECRET:+--env COGNITO_CLIENT_SECRET="$COGNITO_CLIENT_SECRET"} \
-  --env ORDERS_TABLE=rsc-mfe-orders --env VERTICAL="$VERTICAL" \
+  --env ORDERS_TABLE=rsc-mfe-orders --env CARTS_TABLE=rsc-mfe-carts --env VERTICAL="$VERTICAL" \
   ${PUBLIC_HOST:+--env PUBLIC_HOST="$PUBLIC_HOST"} \
   ${APPLE_APP_IDS:+--env APPLE_APP_IDS="$APPLE_APP_IDS"} \
   ${ANDROID_PACKAGE:+--env ANDROID_PACKAGE="$ANDROID_PACKAGE"} \

@@ -15,7 +15,7 @@ export function headers() {
 
 export async function loader({ request }: { request: Request }) {
   const user = await getUser(request);
-  if (!user) throw redirect("/login");
+  if (!user) throw redirect("/login?next=/orders");
   return { email: user.username, orders: await listOrders(user) };
 }
 

@@ -33,8 +33,15 @@ app.get("/.well-known/assetlinks.json", (_req, res) => {
   );
 });
 // Static files mount under the same base the client bundle was built with (see vite.config.ts).
-const base = vertical === "orders" ? "/orders-static" : "";
+const bases = { orders: "/orders-static", store: "/store-static" };
+const base = bases[vertical] ?? "";
 app.use(`${base}/assets`, express.static("build/client/assets", { immutable: true, maxAge: "1y" }));
+// Each vertical serves only its own fragments (fragments/<vertical>/): the account button at
+// /fragments/, the mini cart at /store-static/fragments/. Not content-hashed, so always revalidate.
+const fragmentMounts = vertical === "all" ? [["", "account"], ["/store-static", "store"]] : [[base, vertical]];
+for (const [mount, owner] of fragmentMounts) {
+  app.use(`${mount}/fragments`, express.static(`fragments/${owner}`, { setHeaders: (res) => res.setHeader("Cache-Control", "no-cache") }));
+}
 app.use(
   base || "/",
   express.static("build/client", {

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Execution role for a web function: logs, plus Query on the orders table when ORDERS_TABLE=1, plus the
-# Cognito Admin* sign-in operations on the pool when COGNITO_ADMIN=1 (needs COGNITO_USER_POOL_ID).
-# usage: NAME=rsc-mfe-orders-web ORDERS_TABLE=1 infra/web-role.sh | NAME=rsc-mfe-web COGNITO_ADMIN=1 infra/web-role.sh
+# Execution role for a web function: logs, plus one data grant per vertical, each behind its own flag:
+#   ORDERS_TABLE=1   Query on the orders table             (orders vertical)
+#   CARTS_TABLE=1    Query/UpdateItem/DeleteItem on carts   (store vertical)
+#   COGNITO_ADMIN=1  the Cognito Admin* sign-in operations  (account vertical, needs COGNITO_USER_POOL_ID)
+# usage: NAME=rsc-mfe-store-web CARTS_TABLE=1 infra/web-role.sh
 # No function invokes another function: the vertical that owns the data reads its own table.
 set -euo pipefail
 REGION=${AWS_REGION:-eu-north-1}
@@ -17,6 +19,11 @@ if [ "${ORDERS_TABLE:-0}" = "1" ]; then
   aws iam put-role-policy --role-name "$NAME-role" --policy-name query-orders --policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"dynamodb:Query\",\"Resource\":\"arn:aws:dynamodb:$REGION:$ACCOUNT:table/rsc-mfe-orders\"}]}"
 else
   aws iam delete-role-policy --role-name "$NAME-role" --policy-name query-orders 2>/dev/null || true
+fi
+if [ "${CARTS_TABLE:-0}" = "1" ]; then
+  aws iam put-role-policy --role-name "$NAME-role" --policy-name cart-access --policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"dynamodb:Query\",\"dynamodb:UpdateItem\",\"dynamodb:DeleteItem\"],\"Resource\":\"arn:aws:dynamodb:$REGION:$ACCOUNT:table/rsc-mfe-carts\"}]}"
+else
+  aws iam delete-role-policy --role-name "$NAME-role" --policy-name cart-access 2>/dev/null || true
 fi
 if [ "${COGNITO_ADMIN:-0}" = "1" ]; then
   : "${COGNITO_USER_POOL_ID:?}"

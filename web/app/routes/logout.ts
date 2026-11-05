@@ -1,4 +1,4 @@
-import { redirect } from "react-router";
+import { redirect, redirectDocument } from "react-router";
 import { clearedCookie } from "../session.server";
 
 export function loader() {
@@ -6,5 +6,6 @@ export function loader() {
 }
 
 export function action() {
-  return redirect("/login", { headers: { "Set-Cookie": clearedCookie } });
+  // Document load: the fragments on the login page must see the cleared session.
+  return redirectDocument("/login", { headers: { "Set-Cookie": clearedCookie } });
 }
