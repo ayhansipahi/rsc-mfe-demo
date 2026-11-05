@@ -4,9 +4,12 @@
 // picks URLs. Not sharedCookiesEnabled: it copies cookies into the app's native jar but never
 // deletes them there, then seeds every new WebView from that jar, so a signed-out session returns.
 // The pages tell the shell UI state (signed in or not, cart count) over postMessage, never a token.
-// One native capability sits on top: a Face ID lock on launch and on return from the background. It
-// gates the screen, not the session; signing in stays the page's passkey ceremony.
+// Two native capabilities sit on top. A Face ID lock on launch and on return from the background: it
+// gates the screen, not the session; signing in stays the page's passkey ceremony. And the camera:
+// the Store tab's button takes a photo and hands it to the page, which owns the search call.
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
+import * as ImagePicker from "expo-image-picker";
 import * as LocalAuthentication from "expo-local-authentication";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
@@ -76,6 +79,24 @@ export default function App() {
     setLocked(true);
     if (!(await LocalAuthentication.isEnrolledAsync())) return setLocked(false);
     await unlock();
+  }
+
+  // The page gets the photo as an event, not the shell an API: the search endpoint, its session and
+  // its result page stay in the store vertical and change without an app release.
+  async function photoSearch() {
+    let picked: ImagePicker.ImagePickerResult;
+    try {
+      if (!(await ImagePicker.requestCameraPermissionsAsync()).granted) return;
+      picked = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"] });
+    } catch {
+      // ponytail: the simulator has no camera, so the photo library stands in there.
+      picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"] });
+    }
+    if (picked.canceled) return;
+    // 768 px is plenty to tell six products apart and keeps the upload near 100 KB.
+    const image = await ImageManipulator.manipulate(picked.assets[0].uri).resize({ width: 768 }).renderAsync();
+    const { base64 } = await image.saveAsync({ compress: 0.6, format: SaveFormat.JPEG, base64: true });
+    views.current.store?.injectJavaScript(`dispatchEvent(new CustomEvent("shell:photo",{detail:${JSON.stringify(base64)}}));true;`);
   }
 
   useEffect(() => {
@@ -159,6 +180,15 @@ export default function App() {
               />
             </View>
           ))}
+          {active === "store" && signedIn && (
+            <Pressable
+              onPress={photoSearch}
+              accessibilityLabel="Search with a photo"
+              style={[styles.camera, { backgroundColor: theme.active }]}
+            >
+              <Ionicons name="camera-outline" size={24} color={theme.bg} />
+            </Pressable>
+          )}
         </View>
         <View style={[styles.bar, { borderTopColor: theme.border }]}>
           {visible.map((tab) => {
@@ -218,6 +248,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   badgeText: { fontSize: 10, fontWeight: "700" },
+  camera: {
+    position: "absolute",
+    right: 16,
+    bottom: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   lock: { alignItems: "center", justifyContent: "center", gap: 16 },
   lockTitle: { fontSize: 17, fontWeight: "600" },
   lockButton: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },

@@ -33,6 +33,14 @@
         {
           "faceIDPermission": "RSC Shell uses Face ID to unlock the app."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "RSC Shell uses the camera to find products from a photo.",
+          "photosPermission": "RSC Shell opens a photo you pick to find products in it.",
+          "microphonePermission": false
+        }
       ]
     ],
     "extra": {
