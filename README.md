@@ -40,6 +40,11 @@ app; an app deploy changes only its own `main`. Add `?stitch` to any URL to outl
 with its owner and build time, and look at the `x-vertical` response header to see which
 function answered.
 
+Every `<rsc-*>` tag ships with server HTML inside it: the nav links, the cart and sign-in
+links, the footer line. Crawlers and users without the script yet get that; the fragment's shadow
+root covers it once it runs. Anything that must be indexed stays in the page owner's server
+render, fragments only add what they own on top.
+
 Auth is a platform contract: `getUser(request)` from `@rsc-mfe/shell` verifies the Cognito
 cookie; apps carry no other auth code. Apps call their team's service with the user's access
 token as a bearer; the service verifies it and scopes every query to that user.
