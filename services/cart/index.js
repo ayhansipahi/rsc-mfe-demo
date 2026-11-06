@@ -1,4 +1,6 @@
 // Lambda Web Functions entry: the runtime loads index.js and probes AWS_LAMBDA_HTTP_ENDPOINT.
+// Lambda does not set NODE_ENV; without it express sends stack traces to callers.
+process.env.NODE_ENV ??= "production";
 import { createApp } from "./app.js";
 import { addLine, getLines, removeLine } from "./cart.js";
 

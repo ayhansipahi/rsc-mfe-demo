@@ -15,6 +15,8 @@ async function call(user: { token: string }, path: string, method = "GET"): Prom
   const r = await fetch(`${process.env.CART_API_URL}${path}`, {
     method,
     headers: { authorization: `Bearer ${user.token}` },
+    // A service that accepts the connection and stalls must not hang the page: fail into the 502 below.
+    signal: AbortSignal.timeout(Number(process.env.SERVICE_TIMEOUT_MS ?? 5000)),
   }).catch(() => null);
   if (!r?.ok) throw new Response("cart service unavailable", { status: 502 });
   return r;

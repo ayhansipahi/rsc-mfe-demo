@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "true",
-    "dev": "PORT=4002 node index.js",
+    "dev": "NODE_ENV=development PORT=4002 node index.js",
     "start": "node index.js",
     "test": "node --test"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1161.0",
-    "@aws-sdk/lib-dynamodb": "^3.1161.0",
-    "aws-jwt-verify": "^5.0.0",
+    "@aws-sdk/client-dynamodb": "3.1163.0",
+    "@aws-sdk/lib-dynamodb": "3.1163.0",
+    "aws-jwt-verify": "5.2.1",
     "express": "5.3.0"
   }
 }

@@ -24,3 +24,16 @@ test("orders come from the service with the user's bearer token", async () => {
     server.close();
   }
 });
+
+test("a service that accepts the connection but never answers is a 502, not a hang", async () => {
+  const server = http.createServer(() => {});
+  await new Promise<void>((ok) => server.listen(0, ok));
+  process.env.ORDERS_API_URL = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  process.env.SERVICE_TIMEOUT_MS = "200";
+  try {
+    await assert.rejects(listOrders({ token: "t" }), (e: unknown) => e instanceof Response && e.status === 502);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+  }
+});

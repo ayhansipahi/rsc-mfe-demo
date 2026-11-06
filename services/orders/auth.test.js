@@ -20,3 +20,9 @@ test("a token that is not a JWT is null, not a throw", async () => {
 test("no header is null", async () => {
   assert.equal(await verifyBearer(req(undefined)), null);
 });
+
+test("Bearer dev is rejected when NODE_ENV is unset (the deployed default)", async () => {
+  delete process.env.NODE_ENV;
+  process.env.DEV_SESSION = "me@example.com";
+  assert.equal(await verifyBearer(req("Bearer dev")), null);
+});

@@ -14,13 +14,16 @@ npm ci --no-fund --no-audit
 npm run build -w "$PKG"
 cd "$PKG"
 # Workspaces hoist dependencies to the root; the function gets its own copy, with workspace packages
-# copied in (--install-links) instead of symlinked. The lockfile this writes is not the workspace's.
+# copied in (--install-links) instead of symlinked. This install does not read the workspace lockfile,
+# which is why every package pins exact versions for its runtime dependencies.
 rm -rf node_modules
 npm install --omit=dev --workspaces=false --install-links --no-fund --no-audit
 rm -f package-lock.json
 # The isolated install brought its own react-router: patch that copy too (no-op where absent).
 node "$ROOT/scripts/patch-react-router.mjs"
-[ -n "${DRY:-}" ] && { echo "DRY: would deploy $PKG as $NAME"; exit 0; }
+[ -n "${DRY:-}" ] && { echo "DRY: would deploy $PKG as $NAME"; rm -rf node_modules; exit 0; }
 ROLE_ARN=$(aws iam get-role --role-name "$NAME-role" --query Role.Arn --output text)
 aws lambda-web deploy --region "$REGION" --name "$NAME" --code . --execution-role-arn "$ROLE_ARN" \
   ${CREATE:+--create --auth-type ApplicationManaged} "$@"
+# Back to the workspace's hoisted install: a production-only copy left here would shadow it in dev.
+rm -rf node_modules

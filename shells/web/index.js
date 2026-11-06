@@ -2,6 +2,8 @@
 // apps' business. Lambda Web Functions load index.js and probe AWS_LAMBDA_HTTP_ENDPOINT.
 import express from "express";
 
+process.env.NODE_ENV ??= "production";
+
 const [host, port] = (process.env.AWS_LAMBDA_HTTP_ENDPOINT || `0.0.0.0:${process.env.PORT ?? 3000}`).split(":");
 
 const app = express();
