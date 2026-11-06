@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { postToShell } from "./shell-bridge";
-import { buttonClass } from "./styles";
+import { postToShell } from "@rsc-mfe/shell/shell-bridge";
+import { buttonClass } from "@rsc-mfe/shell/styles";
 
 export function AddToCart({ productId }: { productId: string }) {
   const [state, setState] = useState<"idle" | "busy" | "added">("idle");

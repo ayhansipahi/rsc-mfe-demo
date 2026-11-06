@@ -1,8 +1,9 @@
 import { redirect } from "react-router";
 import { CartChanged } from "../cart-changed";
-import { getUser } from "../session.server";
-import { countOf, getCart, removeLine, type CartLine } from "../store.server";
-import { buttonClass } from "../styles";
+import { getUser } from "@rsc-mfe/shell/session.server";
+import { isProduct } from "../catalog";
+import { countOf, getCart, removeLine, type CartLine } from "../cart.server";
+import { buttonClass } from "@rsc-mfe/shell/styles";
 
 export function meta() {
   return [{ title: "Cart" }];
@@ -15,14 +16,15 @@ export function headers() {
 export async function loader({ request }: { request: Request }) {
   const user = await getUser(request);
   if (!user) throw redirect("/login?next=/store/cart");
-  return { lines: await getCart(user.sub) };
+  return { lines: await getCart(user) };
 }
 
 export async function action({ request }: { request: Request }) {
   const user = await getUser(request);
   if (!user) throw redirect("/login?next=/store/cart");
   const form = await request.formData();
-  await removeLine(user.sub, String(form.get("productId") ?? ""));
+  const productId = String(form.get("productId") ?? "");
+  if (isProduct(productId)) await removeLine(user, productId);
   // Redirect, not data: in RSC mode a submission skips the loaders in the same request
   // (React Router 8.5.1), so a document POST would render this page without loaderData.
   return redirect("/store/cart");
@@ -32,7 +34,7 @@ export function ServerComponent({ loaderData }: { loaderData: { lines: CartLine[
   const { lines } = loaderData;
   const total = lines.reduce((sum, l) => sum + l.price * l.qty, 0);
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Cart</h1>
       <CartChanged count={countOf(lines)} />
       {lines.length === 0 ? (
@@ -62,6 +64,6 @@ export function ServerComponent({ loaderData }: { loaderData: { lines: CartLine[
           <p className="text-right font-medium">Total {total.toFixed(2)}</p>
         </>
       )}
-    </main>
+    </div>
   );
 }

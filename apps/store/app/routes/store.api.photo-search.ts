@@ -3,8 +3,8 @@
 // in it. Resource route, so like the cart contract it requires a JSON body (a cross-site form cannot
 // send one without a preflight) on top of the SameSite=Lax session cookie.
 import { BedrockRuntimeClient, ConverseCommand } from "@aws-sdk/client-bedrock-runtime";
-import { getUser } from "../session.server";
-import { catalog, isProduct } from "../store.server";
+import { getUser } from "@rsc-mfe/shell/session.server";
+import { catalog, isProduct } from "../catalog";
 
 const noStore = { "Cache-Control": "private, no-store" };
 const modelId = "eu.anthropic.claude-haiku-4-5-20251001-v1:0";

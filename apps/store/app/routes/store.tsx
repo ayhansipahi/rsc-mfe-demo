@@ -1,5 +1,5 @@
 import { AddToCart } from "../add-to-cart";
-import { catalog, isProduct } from "../store.server";
+import { catalog, isProduct } from "../catalog";
 
 export function meta() {
   return [{ title: "Store" }];
@@ -17,7 +17,7 @@ export function ServerComponent({ loaderData }: { loaderData: { match: string[] 
   const { match } = loaderData;
   const products = match ? match.map((id) => catalog.find((p) => p.id === id)!) : catalog;
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Store</h1>
       {match && (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -39,6 +39,6 @@ export function ServerComponent({ loaderData }: { loaderData: { match: string[] 
           </li>
         ))}
       </ul>
-    </main>
+    </div>
   );
 }

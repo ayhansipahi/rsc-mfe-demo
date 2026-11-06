@@ -1,5 +1,5 @@
-// <rsc-mini-cart>: owned and served by the store vertical at /store-static/fragments/mini-cart.js.
-// Any vertical's page renders the tag; this file reads the store's cart contract (/store/api/cart),
+// <rsc-mini-cart>: owned and served by the store team at /store-static/fragments/mini-cart.js.
+// The shell's header renders the tag; this file reads the store's cart contract (/store/api/cart),
 // shows the item count, and opens the cart lines on click. It re-reads the cart on "cart:changed".
 // Inside the mobile shell it draws nothing and reports the count to the native tab bar instead.
 const shell = window.ReactNativeWebView;
@@ -22,9 +22,13 @@ const style = `
 
 const escape = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+const BUILD = "__BUILD__";
+
 class MiniCart extends HTMLElement {
   connectedCallback() {
     if (!this.shadowRoot) {
+      this.dataset.owner = "store";
+      this.dataset.build = BUILD;
       this.attachShadow({ mode: "open" });
       addEventListener("cart:changed", () => this.refresh());
       addEventListener("pageshow", () => this.refresh());
