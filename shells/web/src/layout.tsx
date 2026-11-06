@@ -31,6 +31,13 @@ export function Document({ children }: { children: React.ReactNode }) {
 const viewport = "width=device-width, initial-scale=1";
 const shellViewport = `${viewport}, maximum-scale=1, user-scalable=no`;
 
+// Site nav, as header.js draws it (same order, same labels).
+const pages = [
+  ["/", "Home"],
+  ["/store", "Store"],
+  ["/orders", "Orders"],
+] as const;
+
 export interface PageProps {
   /** Inside the native mobile shell (RSCShell/ User-Agent): no web chrome, fragments report to the tab bar. */
   shell: boolean;
@@ -65,7 +72,20 @@ export function Page({ shell, owner, build, shellOrigin, stitch, children }: Pag
         <>
           <script type="module" src={`${shellOrigin}/shell-static/fragments/header.js`} async />
           <script type="module" src={`${shellOrigin}/shell-static/fragments/footer.js`} async />
-          <rsc-header data-owner="shell" />
+          {/* The nav is in the server HTML so crawlers (and users before header.js loads) see the
+              site's links: a custom element's light DOM is invisible to them only once JS runs.
+              header.js then draws the same links in its shadow root, which hides these. Keep in
+              step with `pages` in fragments/header.js. ponytail: no aria-current server-side,
+              header.js sets it; a shared list would need a served module. */}
+          <rsc-header data-owner="shell">
+            <nav className="flex min-h-[49px] items-center gap-1 border-b border-neutral-200 px-4 py-2 text-sm dark:border-neutral-800">
+              {pages.map(([to, label]) => (
+                <a key={to} href={to} className="rounded-md px-3 py-1.5 text-neutral-600 dark:text-neutral-400">
+                  {label}
+                </a>
+              ))}
+            </nav>
+          </rsc-header>
         </>
       )}
       <main data-owner={owner} data-build={build} className="mx-auto max-w-3xl space-y-4 p-6">
