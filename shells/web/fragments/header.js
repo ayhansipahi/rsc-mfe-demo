@@ -25,6 +25,7 @@ const style = `
   @media (prefers-color-scheme: dark) { :host { --bg: #171717; --fg: #fff; --line: #262626; --muted: #a3a3a3; --hover: #262626; } }
 `;
 
+// Also rendered server-side by src/layout.tsx (Page) for crawlers; keep the two lists equal.
 const pages = [
   ["/", "Home"],
   ["/store", "Store"],
