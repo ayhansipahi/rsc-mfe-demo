@@ -37,6 +37,7 @@ const pages = [
   ["/store", "Store"],
   ["/orders", "Orders"],
 ] as const;
+const navLink = "rounded-md px-3 py-1.5 text-neutral-600 dark:text-neutral-400";
 
 export interface PageProps {
   /** Inside the native mobile shell (RSCShell/ User-Agent): no web chrome, fragments report to the tab bar. */
@@ -72,18 +73,23 @@ export function Page({ shell, owner, build, shellOrigin, stitch, children }: Pag
         <>
           <script type="module" src={`${shellOrigin}/shell-static/fragments/header.js`} async />
           <script type="module" src={`${shellOrigin}/shell-static/fragments/footer.js`} async />
-          {/* The nav is in the server HTML so crawlers (and users before header.js loads) see the
-              site's links: a custom element's light DOM is invisible to them only once JS runs.
-              header.js then draws the same links in its shadow root, which hides these. Keep in
-              step with `pages` in fragments/header.js. ponytail: no aria-current server-side,
-              header.js sets it; a shared list would need a served module. */}
+          {/* Every <rsc-*> tag carries server HTML: what a crawler, or a user before the script
+              loads, gets instead of the fragment. The fragment's shadow root covers it once JS
+              runs (light DOM without a <slot> is not rendered). For the header that is the site
+              nav plus the links the two nested fragments lead to; keep in step with `pages` in
+              fragments/header.js. ponytail: no aria-current and no cart count server-side, the
+              fragments own those. */}
           <rsc-header data-owner="shell">
             <nav className="flex min-h-[49px] items-center gap-1 border-b border-neutral-200 px-4 py-2 text-sm dark:border-neutral-800">
               {pages.map(([to, label]) => (
-                <a key={to} href={to} className="rounded-md px-3 py-1.5 text-neutral-600 dark:text-neutral-400">
+                <a key={to} href={to} className={navLink}>
                   {label}
                 </a>
               ))}
+              <span className="ml-auto flex gap-2">
+                <a href="/store/cart" className={navLink}>Cart</a>
+                <a href="/login" className={navLink}>Sign in</a>
+              </span>
             </nav>
           </rsc-header>
         </>
@@ -91,7 +97,11 @@ export function Page({ shell, owner, build, shellOrigin, stitch, children }: Pag
       <main data-owner={owner} data-build={build} className="mx-auto max-w-3xl space-y-4 p-6">
         {children}
       </main>
-      {!shell && <rsc-footer data-owner="shell" />}
+      {!shell && (
+        <rsc-footer data-owner="shell">
+          <footer className="px-4 py-3 text-xs text-neutral-500">RSC micro-frontend demo</footer>
+        </rsc-footer>
+      )}
     </>
   );
 }
