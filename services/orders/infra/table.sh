@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The orders vertical's data: one DynamoDB table keyed by the Cognito sub. Seeds three rows for
-# the demo user. usage: infra/orders-table.sh <cognito-sub>
+# the demo user. usage: services/orders/infra/table.sh <cognito-sub>
 set -euo pipefail
 REGION=${AWS_REGION:-eu-north-1}
 SUB=$1
