@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The store vertical's carts: one item per cart line, keyed by the Cognito sub and the product id.
-# usage: infra/carts-table.sh
+# usage: services/cart/infra/table.sh
 set -euo pipefail
 REGION=${AWS_REGION:-eu-north-1}
 NAME=rsc-mfe-carts
