@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { verifyBearer } from "./auth.js";
 
-const req = (authorization) => ({ headers: { authorization } });
+const req = (authorization) => authorization;
 
 test("Bearer dev is rejected in production", async () => {
   process.env.NODE_ENV = "production";

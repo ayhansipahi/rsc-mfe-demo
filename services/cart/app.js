@@ -1,34 +1,33 @@
 // The cart service: the bearer's cart lines. Internal: reached by the store app's server, which
 // owns the catalog and validates product ids against it before calling here; this service only
 // rejects ids that could not be a key.
-import express from "express";
+import { Hono } from "hono";
 import { verifyBearer } from "./auth.js";
 
 const PRODUCT_ID = /^[\w-]{1,32}$/;
 
 export function createApp({ getLines, addLine, removeLine }) {
-  const app = express();
-  app.use(async (req, res, next) => {
-    res.setHeader("x-vertical", "cart-api");
-    res.setHeader("Cache-Control", "private, no-store");
-    req.user = await verifyBearer(req);
-    if (!req.user) return res.status(401).json({ error: "unauthorized" });
-    next();
+  const app = new Hono();
+  app.use(async (c, next) => {
+    c.header("x-vertical", "cart-api");
+    c.header("Cache-Control", "private, no-store");
+    const user = await verifyBearer(c.req.header("authorization"));
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+    c.set("user", user);
+    await next();
   });
-  app.get("/cart", async (req, res) => {
-    res.json({ lines: await getLines(req.user.sub) });
+  app.get("/cart", async (c) => c.json({ lines: await getLines(c.get("user").sub) }));
+  app.use("/cart/:productId", async (c, next) => {
+    if (!PRODUCT_ID.test(c.req.param("productId"))) return c.json({ error: "bad product id" }, 400);
+    await next();
   });
-  app.param("productId", (req, res, next, id) => {
-    if (!PRODUCT_ID.test(id)) return res.status(400).json({ error: "bad product id" });
-    next();
+  app.put("/cart/:productId", async (c) => {
+    await addLine(c.get("user").sub, c.req.param("productId"));
+    return c.body(null, 204);
   });
-  app.put("/cart/:productId", async (req, res) => {
-    await addLine(req.user.sub, req.params.productId);
-    res.status(204).end();
-  });
-  app.delete("/cart/:productId", async (req, res) => {
-    await removeLine(req.user.sub, req.params.productId);
-    res.status(204).end();
+  app.delete("/cart/:productId", async (c) => {
+    await removeLine(c.get("user").sub, c.req.param("productId"));
+    return c.body(null, 204);
   });
   return app;
 }
