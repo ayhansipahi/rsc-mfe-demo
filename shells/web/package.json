@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./session.server": "./src/session.server.ts",
+    "./chrome.server": "./src/chrome.server.ts",
     "./layout": "./src/layout.tsx",
     "./styles": "./src/styles.ts",
     "./shell-bridge": "./src/shell-bridge.ts",
