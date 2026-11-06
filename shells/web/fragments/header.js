@@ -4,6 +4,15 @@
 // know nothing about either. Cross-app links are full document loads: each app is its own build.
 const BUILD = "__BUILD__";
 
+// ?stitch: outline this fragment inside its own shadow root (page CSS cannot reach in). Read from
+// the URL, not the html class: the page sets that after hydration, which may be after this runs.
+const stitch = (owner, color) =>
+  new URLSearchParams(location.search).has("stitch")
+    ? `<style>:host { position: relative; outline: 2px dashed ${color}; outline-offset: -2px; }
+      .stitch-label { position: absolute; top: 0; right: 0; z-index: 20; padding: 2px 6px; font: 11px/1 ui-monospace, monospace; background: ${color}; color: #fff; }</style>
+      <span class="stitch-label">${owner} · ${BUILD}</span>`
+    : "";
+
 const style = `
   :host { display: block; }
   nav { display: flex; align-items: center; gap: 4px; padding: 8px 16px; border-bottom: 1px solid var(--line);
@@ -27,7 +36,6 @@ const owners = ["/fragments/account-button.js", "/store-static/fragments/mini-ca
 class Header extends HTMLElement {
   connectedCallback() {
     if (this.shadowRoot) return;
-    this.dataset.build = BUILD;
     const here = location.pathname;
     const links = pages
       .map(([to, label]) => {
@@ -35,7 +43,7 @@ class Header extends HTMLElement {
         return `<a href="${to}"${active ? ' aria-current="page"' : ""}>${label}</a>`;
       })
       .join("");
-    this.attachShadow({ mode: "open" }).innerHTML = `<style>${style}</style>
+    this.attachShadow({ mode: "open" }).innerHTML = `<style>${style}</style>${stitch("shell", "#2563eb")}
       <nav>${links}<div class="right"><rsc-mini-cart></rsc-mini-cart><rsc-account-button></rsc-account-button></div></nav>`;
     for (const src of owners) {
       if (!document.querySelector(`script[src="${src}"]`)) {

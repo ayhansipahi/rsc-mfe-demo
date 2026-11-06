@@ -1,4 +1,5 @@
 import { Links, Meta, ScrollRestoration } from "react-router";
+import { Stitch } from "./stitch";
 
 // The shell's two pieces of every app's root route. Document is the <html> skeleton (an app's
 // Layout export). Page draws the three areas the shell owns the shape of: header and footer come
@@ -48,7 +49,7 @@ export function Page({ shell, owner, build, shellOrigin, stitch, children }: Pag
   return (
     <>
       <meta name="viewport" content={shell ? shellViewport : viewport} />
-      {stitch && <script dangerouslySetInnerHTML={{ __html: 'document.documentElement.classList.add("stitch")' }} />}
+      {stitch && <Stitch />}
       {shell ? (
         <>
           {/* The fragments draw nothing here; they report the session and the cart count to the

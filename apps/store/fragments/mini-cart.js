@@ -24,6 +24,15 @@ const escape = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)}
 
 const BUILD = "__BUILD__";
 
+// ?stitch: outline this fragment inside its own shadow root (page CSS cannot reach in). Read from
+// the URL, not the html class: the page sets that after hydration, which may be after this runs.
+const stitch = (owner, color) =>
+  new URLSearchParams(location.search).has("stitch")
+    ? `<style>:host { position: relative; outline: 2px dashed ${color}; outline-offset: -2px; }
+      .stitch-label { position: absolute; top: 0; right: 0; z-index: 20; padding: 2px 6px; font: 11px/1 ui-monospace, monospace; background: ${color}; color: #fff; }</style>
+      <span class="stitch-label">${owner} · ${BUILD}</span>`
+    : "";
+
 class MiniCart extends HTMLElement {
   connectedCallback() {
     if (!this.shadowRoot) {
@@ -55,7 +64,7 @@ class MiniCart extends HTMLElement {
           .map((l) => `<li><span>${escape(l.name)}</span><span class="muted">x${l.qty}</span></li>`)
           .join("")}</ul>`
       : `<p class="muted">Your cart is empty.</p>`;
-    this.shadowRoot.innerHTML = `<style>${style}</style>
+    this.shadowRoot.innerHTML = `<style>${style}</style>${stitch("store", "#d97706")}
       <details${open}>
         <summary aria-label="Cart, ${cart.count} items">Cart<span class="count">${cart.count}</span></summary>
         <div class="panel">${lines}<a href="/store/cart">View cart</a></div>
