@@ -1,6 +1,6 @@
 import { redirect } from "react-router";
 import { listOrders, type Order } from "../orders.server";
-import { getUser } from "../session.server";
+import { getUser } from "@rsc-mfe/shell/session.server";
 
 export function meta() {
   return [{ title: "Orders" }];
@@ -19,7 +19,7 @@ export async function loader({ request }: { request: Request }) {
 
 export function ServerComponent({ loaderData }: { loaderData: { email: string; orders: Order[] } }) {
   return (
-    <main className="space-y-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Orders for {loaderData.email}</h1>
       <table className="w-full text-sm">
         <thead className="text-left text-neutral-500">
@@ -40,8 +40,8 @@ export function ServerComponent({ loaderData }: { loaderData: { email: string; o
         </tbody>
       </table>
       <p className="text-xs text-neutral-500">
-        Read by the server component from a table only this vertical&apos;s role can query. Nothing behind this page has a URL.
+        Read by the server component from the orders team&apos;s service, with your token forwarded; only that service&apos;s role can query the table.
       </p>
-    </main>
+    </div>
   );
 }

@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["app/**/*", ".react-router/types/**/*", "../../shells/web/src/*.d.ts"],
+  "compilerOptions": {
+    "rootDirs": [".", "./.react-router/types"]
+  }
+}
