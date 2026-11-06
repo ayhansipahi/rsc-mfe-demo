@@ -1,0 +1,8 @@
+/shells/            @rsc-mfe/platform
+/apps/account/      @rsc-mfe/account
+/services/auth/     @rsc-mfe/account
+/apps/orders/       @rsc-mfe/orders
+/services/orders/   @rsc-mfe/orders
+/apps/store/        @rsc-mfe/store
+/services/cart/     @rsc-mfe/store
+/package.json       @rsc-mfe/platform

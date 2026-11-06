@@ -1,5 +1,6 @@
 .DS_Store
 .env
 node_modules/
-/web/build/
-/web/.react-router/
+build/
+.react-router/
+.superpowers/

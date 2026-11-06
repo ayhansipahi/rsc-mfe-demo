@@ -1,0 +1,3 @@
+@import "@rsc-mfe/shell/app.css";
+/* The shell's layout and fragments use Tailwind classes too; generate them from its source. */
+@source "../../../shells/web/src";
