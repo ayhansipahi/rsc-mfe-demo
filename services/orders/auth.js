@@ -13,8 +13,9 @@ const getVerifier = () =>
     tokenUse: "access",
   }));
 
-export async function verifyBearer(req) {
-  const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
+// Takes the Authorization header's value.
+export async function verifyBearer(authorization) {
+  const token = authorization?.match(/^Bearer (.+)$/)?.[1];
   if (!token) return null;
   if (process.env.NODE_ENV === "development" && process.env.DEV_SESSION && token === "dev") return { sub: "dev" };
   try {
