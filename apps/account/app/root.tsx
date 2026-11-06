@@ -1,5 +1,6 @@
 import { isRouteErrorResponse, Outlet, type ShouldRevalidateFunctionArgs } from "react-router";
 import { Document, Page } from "@rsc-mfe/shell/layout";
+import { chrome } from "@rsc-mfe/shell/chrome.server";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -7,8 +8,10 @@ import "./app.css";
 // The chrome is per client: the mobile shell announces itself in the User-Agent and draws its own
 // tab bar, so its pages render without the web header and footer. This distribution's cache policy
 // has a default TTL of 0, so the two variants never share a cache entry.
-export function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request }: Route.LoaderArgs) {
   return {
+    // Who is signed in and the cart count, so the header's server HTML is not bare.
+    ...(await chrome(request)),
     shell: (request.headers.get("user-agent") ?? "").includes("RSCShell/"),
     stitch: new URL(request.url).searchParams.has("stitch"),
     // Where the shell's header and footer scripts come from: "" on the shared host, a dev server
@@ -29,7 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   return (
-    <Page shell={loaderData.shell} owner="account" build={__BUILD__} shellOrigin={loaderData.shellOrigin} stitch={loaderData.stitch}>
+    <Page shell={loaderData.shell} owner="account" build={__BUILD__} shellOrigin={loaderData.shellOrigin} stitch={loaderData.stitch} email={loaderData.email} cartCount={loaderData.cartCount}>
       <Outlet />
     </Page>
   );

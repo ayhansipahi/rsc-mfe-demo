@@ -50,10 +50,13 @@ export interface PageProps {
   shellOrigin: string;
   /** ?stitch: outline every area with its owner and build time. */
   stitch: boolean;
+  /** Server HTML for the header's fragments, from chrome(request); omitted, the links are bare. */
+  email?: string | null;
+  cartCount?: number | null;
   children: React.ReactNode;
 }
 
-export function Page({ shell, owner, build, shellOrigin, stitch, children }: PageProps) {
+export function Page({ shell, owner, build, shellOrigin, stitch, email, cartCount, children }: PageProps) {
   return (
     <>
       <meta name="viewport" content={shell ? shellViewport : viewport} />
@@ -76,9 +79,9 @@ export function Page({ shell, owner, build, shellOrigin, stitch, children }: Pag
           {/* Every <rsc-*> tag carries server HTML: what a crawler, or a user before the script
               loads, gets instead of the fragment. The fragment's shadow root covers it once JS
               runs (light DOM without a <slot> is not rendered). For the header that is the site
-              nav plus the links the two nested fragments lead to; keep in step with `pages` in
-              fragments/header.js. ponytail: no aria-current and no cart count server-side, the
-              fragments own those. */}
+              nav plus what the two nested fragments show, as far as the server knows it (chrome());
+              keep in step with `pages` in fragments/header.js. ponytail: no aria-current
+              server-side, header.js sets it. */}
           <rsc-header data-owner="shell">
             <nav className="flex min-h-[49px] items-center gap-1 border-b border-neutral-200 px-4 py-2 text-sm dark:border-neutral-800">
               {pages.map(([to, label]) => (
@@ -87,8 +90,14 @@ export function Page({ shell, owner, build, shellOrigin, stitch, children }: Pag
                 </a>
               ))}
               <span className="ml-auto flex gap-2">
-                <a href="/store/cart" className={navLink}>Cart</a>
-                <a href="/login" className={navLink}>Sign in</a>
+                <a href="/store/cart" className={navLink}>
+                  Cart{cartCount != null && <span className="ml-1 font-medium">{cartCount}</span>}
+                </a>
+                {email ? (
+                  <a href="/account" className={navLink}>{email}</a>
+                ) : (
+                  <a href="/login" className={navLink}>Sign in</a>
+                )}
               </span>
             </nav>
           </rsc-header>
