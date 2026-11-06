@@ -1,0 +1,9 @@
+{
+  "name": "rsc-mfe-demo",
+  "private": true,
+  "type": "module",
+  "workspaces": ["shells/web", "apps/*", "services/orders", "services/cart"],
+  "scripts": {
+    "postinstall": "node scripts/patch-react-router.mjs"
+  }
+}

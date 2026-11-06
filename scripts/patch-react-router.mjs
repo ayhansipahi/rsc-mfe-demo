@@ -9,6 +9,10 @@ const files = [
 ];
 
 for (const file of files) {
+  if (!fs.existsSync(file)) {
+    console.log(`patch-react-router: ${file} not installed, skipping`);
+    continue;
+  }
   const src = fs.readFileSync(file, "utf8");
   const start = src.indexOf("async function getManifestRoute(route)");
   const end = src.indexOf("async function explodeLazyRoute", start);
