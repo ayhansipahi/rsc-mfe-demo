@@ -18,6 +18,8 @@ cd "$PKG"
 rm -rf node_modules
 npm install --omit=dev --workspaces=false --install-links --no-fund --no-audit
 rm -f package-lock.json
+# The isolated install brought its own react-router: patch that copy too (no-op where absent).
+node "$ROOT/scripts/patch-react-router.mjs"
 [ -n "${DRY:-}" ] && { echo "DRY: would deploy $PKG as $NAME"; exit 0; }
 ROLE_ARN=$(aws iam get-role --role-name "$NAME-role" --query Role.Arn --output text)
 aws lambda-web deploy --region "$REGION" --name "$NAME" --code . --execution-role-arn "$ROLE_ARN" \
