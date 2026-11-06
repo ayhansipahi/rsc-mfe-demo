@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# usage: infra/cloudfront-vertical.sh <distribution-id> <vertical> <function-endpoint-hostname>
+# usage: shells/web/infra/cloudfront-vertical.sh <distribution-id> <vertical> <function-endpoint-hostname>
 # Adds a vertical to the existing distribution: an origin "<vertical>fn" (same custom-origin settings
 # as the account function) and two behaviors ahead of the rest, /<vertical>-static/* for its assets
 # and fragments and /<vertical>* for its pages. Behavior order matters: CloudFront takes the first
 # pattern that matches, and /<vertical>* would also swallow /<vertical>-static/.
-# Used for: orders (/orders, /orders-static) and store (/store, /store-static).
+# Used for: shell (/shell-static), orders (/orders, /orders-static) and store (/store, /store-static).
 set -euo pipefail
 DIST=$1
 VERTICAL=$2

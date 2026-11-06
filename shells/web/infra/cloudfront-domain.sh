@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# usage: infra/cloudfront-domain.sh <distribution-id> <domain> <acm-certificate-arn-in-us-east-1>
+# usage: shells/web/infra/cloudfront-domain.sh <distribution-id> <domain> <acm-certificate-arn-in-us-east-1>
 # Puts a custom domain on the distribution. The certificate must be issued in us-east-1 and the
 # domain's DNS must CNAME to the distribution (DNS only, not proxied by another CDN).
 # After this, the passkey relying party ID and PUBLIC_HOST must move to the same domain:

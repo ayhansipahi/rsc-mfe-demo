@@ -22,7 +22,12 @@ function readCookie(request: Request): string | undefined {
   return request.headers.get("cookie")?.match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`))?.[1];
 }
 
+// Platform contract + local stub: a vertical running on its own has no account app to sign in
+// with, so outside production DEV_SESSION names the user. Production builds never read it.
 export async function getUser(request: Request): Promise<SessionUser | null> {
+  if (process.env.NODE_ENV !== "production" && process.env.DEV_SESSION) {
+    return { sub: "dev", username: process.env.DEV_SESSION, token: "dev" };
+  }
   const token = readCookie(request);
   if (!token) return null;
   try {

@@ -1,0 +1,27 @@
+{
+  "name": "@rsc-mfe/shell",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./session.server": "./src/session.server.ts",
+    "./layout": "./src/layout.tsx",
+    "./styles": "./src/styles.ts",
+    "./shell-bridge": "./src/shell-bridge.ts",
+    "./app.css": "./src/app.css"
+  },
+  "scripts": {
+    "build": "node ../../scripts/stamp-fragments.mjs",
+    "dev": "npm run build && PORT=4000 node index.js",
+    "start": "node index.js",
+    "test": "node --test src"
+  },
+  "dependencies": {
+    "aws-jwt-verify": "^5.0.0",
+    "express": "5.3.0"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8",
+    "react-router": "^8.5.1"
+  }
+}

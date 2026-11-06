@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# usage: infra/cloudfront.sh <web-function-endpoint-hostname>
+# usage: shells/web/infra/cloudfront.sh <web-function-endpoint-hostname>
 # One distribution in front of the web function: custom cache policy (no Host header in the key,
 # query strings for _routes), AllViewerExceptHostHeader, keepalive 60 s. Prints the domain name.
 set -euo pipefail
