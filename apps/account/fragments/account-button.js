@@ -5,7 +5,7 @@
 const shell = window.ReactNativeWebView;
 
 const style = `
-  :host { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font: 14px/18px ui-sans-serif, system-ui, sans-serif; }
+  :host { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; line-height: 18px; }
   a, button { font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px;
     background: var(--bg); text-decoration: none; cursor: pointer; }
   .who { max-width: 20ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
