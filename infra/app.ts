@@ -5,6 +5,7 @@ import { StoreWebStack } from "../apps/store/infra/stack.ts";
 import { CartApiStack } from "../services/cart/infra/stack.ts";
 import { OrdersApiStack } from "../services/orders/infra/stack.ts";
 import { AssetsStack } from "../shells/web/infra/assets-stack.ts";
+import { EdgeStack } from "../shells/web/infra/edge-stack.ts";
 import { ShellStack } from "../shells/web/infra/shell-stack.ts";
 import { stages } from "./stages.ts";
 import type { StageConfig } from "./stages.ts";
@@ -19,7 +20,14 @@ export function buildStage(app: App, stage: StageConfig) {
   const shell = new ShellStack(scope, stage);
   const ordersWeb = new OrdersWebStack(scope, stage, { bucket: assets.bucket, ...auth, ordersApiUrl: ordersApi.url });
   const storeWeb = new StoreWebStack(scope, stage, { bucket: assets.bucket, ...auth, cartApiUrl: cartApi.url });
-  return { assets, account, ordersApi, cartApi, shell, ordersWeb, storeWeb };
+  const edge = new EdgeStack(scope, stage, {
+    bucket: assets.bucket,
+    account: account.fn.domainName,
+    shell: shell.fn.domainName,
+    orders: ordersWeb.fn.domainName,
+    store: storeWeb.fn.domainName,
+  });
+  return { assets, account, ordersApi, cartApi, shell, ordersWeb, storeWeb, edge };
 }
 
 if (import.meta.main) {
