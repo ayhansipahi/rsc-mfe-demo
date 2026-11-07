@@ -101,3 +101,10 @@ scripts/lambda-rollout.sh rsc-mfe-orders-web rollback  # 100% back to the previo
 
 Each step is one endpoint update, live in seconds. Judge health between steps from the logs
 (the build id is in `data-build` and `?stitch`); nothing rolls back on its own.
+
+Two revisions can serve at once, so an app's hashed client assets cannot live only in the
+function package (a page from one revision would ask for files the other does not have). The
+deploy syncs `build/client/assets` to the `rsc-mfe-assets` bucket, which every build adds to
+and none deletes (90-day lifecycle); CloudFront serves `/assets/*`, `/orders-static/assets/*`
+and `/store-static/assets/*` from it. Services need nothing of the sort: one request, one
+response. Keep service changes backward compatible while two revisions serve.

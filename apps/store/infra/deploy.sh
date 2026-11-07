@@ -6,6 +6,7 @@
 #      PUBLIC_HOST (the CloudFront domain).
 set -euo pipefail
 : "${CART_API_URL:?}" "${COGNITO_USER_POOL_ID:?}" "${COGNITO_CLIENT_ID:?}"
+export ASSET_BASE=/store-static
 exec "$(dirname "$0")/../../../scripts/lambda-deploy.sh" apps/store rsc-mfe-store-web \
   --env CART_API_URL="$CART_API_URL" \
   --env COGNITO_USER_POOL_ID="$COGNITO_USER_POOL_ID" --env COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
