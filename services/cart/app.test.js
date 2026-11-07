@@ -43,3 +43,10 @@ test("a bad product id is 400 before the store is touched", async () => {
   assert.deepEqual(await r.json(), { error: "bad product id" });
   assert.equal(calls.length, before);
 });
+
+test("x-flow-id is echoed when sent and minted when not", async () => {
+  const sent = await app.request("/cart", { headers: { ...auth, "x-flow-id": "flow-7" } });
+  assert.equal(sent.headers.get("x-flow-id"), "flow-7");
+  const minted = await app.request("/cart");
+  assert.match(minted.headers.get("x-flow-id"), /^[0-9a-f-]{36}$/);
+});

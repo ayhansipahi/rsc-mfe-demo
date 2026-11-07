@@ -19,3 +19,10 @@ test("GET /orders with the dev stub returns the caller's orders", async () => {
   assert.equal(r.headers.get("cache-control"), "private, no-store");
   assert.deepEqual(await r.json(), [{ orderId: "O1", item: "Kbd", total: "1.00", sub: "dev" }]);
 });
+
+test("x-flow-id is echoed when sent and minted when not", async () => {
+  const sent = await app.request("/orders", { headers: { "x-flow-id": "flow-7" } });
+  assert.equal(sent.headers.get("x-flow-id"), "flow-7");
+  const minted = await app.request("/orders");
+  assert.match(minted.headers.get("x-flow-id"), /^[0-9a-f-]{36}$/);
+});
