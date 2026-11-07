@@ -2,7 +2,9 @@
 # The mechanical half of every package's infra/deploy.sh: install the workspace, build one package,
 # give it its own node_modules, and ship that directory as a Lambda Web Function.
 # usage: scripts/lambda-deploy.sh <workspace-path> <function-name> [aws lambda-web deploy args...]
-# env: CREATE=1 for the first deploy, DRY=1 to stop before the AWS call, AWS_REGION (eu-north-1).
+# env: CREATE=1 for the first deploy, DRY=1 to stop before the AWS call, AWS_REGION (eu-north-1),
+#      WEIGHT=<1-100> to route only that share of traffic to the new revision (see lambda-rollout.sh);
+#      unset, the new revision takes all traffic as before. The first deploy always takes all.
 set -euo pipefail
 PKG=$1
 NAME=$2
@@ -25,5 +27,6 @@ node "$ROOT/scripts/patch-react-router.mjs"
 ROLE_ARN=$(aws iam get-role --role-name "$NAME-role" --query Role.Arn --output text)
 aws lambda-web deploy --region "$REGION" --name "$NAME" --code . --execution-role-arn "$ROLE_ARN" \
   ${CREATE:+--create --auth-type ApplicationManaged} "$@"
+[ -n "${CREATE:-}" ] || "$ROOT/scripts/lambda-rollout.sh" "$NAME" "${WEIGHT:-100}"
 # Back to the workspace's hoisted install: a production-only copy left here would shadow it in dev.
 rm -rf node_modules
