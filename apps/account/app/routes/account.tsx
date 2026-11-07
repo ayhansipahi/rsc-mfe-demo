@@ -1,7 +1,7 @@
-import { redirect } from "react-router";
-import { listPasskeys } from "../cognito.server";
+import { redirect, redirectDocument } from "react-router";
+import { deleteAccount, listPasskeys } from "../cognito.server";
 import { RegisterPasskey } from "../register-passkey";
-import { getUser } from "@rsc-mfe/shell/session.server";
+import { clearedCookie, getUser } from "@rsc-mfe/shell/session.server";
 import { buttonClass } from "@rsc-mfe/shell/styles";
 
 interface Passkey {
@@ -37,6 +37,14 @@ export async function loader({ request }: { request: Request }) {
   return { email: user.username, passkeys };
 }
 
+// Delete account: remove the Cognito user, then drop the session the same way /logout does.
+export async function action({ request }: { request: Request }) {
+  const user = await getUser(request);
+  if (!user) throw redirect("/login?next=/account");
+  await deleteAccount(user.token);
+  return redirectDocument("/", { headers: { "Set-Cookie": clearedCookie } });
+}
+
 // The account vertical's own page: everything about the session lives next to the code that
 // issues it (/login, /logout, /auth/passkey), not on another vertical's page.
 export function ServerComponent({ loaderData }: { loaderData: { email: string; passkeys: Passkey[] } }) {
@@ -67,6 +75,16 @@ export function ServerComponent({ loaderData }: { loaderData: { email: string; p
           Sign out
         </button>
       </form>
+      {/* Server component, no client JS: the <details> disclosure is the confirmation step. */}
+      <details className="border-t border-neutral-200 pt-4 dark:border-neutral-800">
+        <summary className="cursor-pointer text-sm text-neutral-600 dark:text-neutral-400">Delete account</summary>
+        <form method="post" action="/account" className="mt-3 space-y-2">
+          <p className="text-sm">This removes your sign-in and cannot be undone.</p>
+          <button type="submit" className={buttonClass}>
+            Delete my account
+          </button>
+        </form>
+      </details>
     </div>
   );
 }

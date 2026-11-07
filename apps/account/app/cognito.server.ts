@@ -9,6 +9,7 @@ import {
   CognitoIdentityProviderClient,
   CompleteWebAuthnRegistrationCommand,
   ConfirmSignUpCommand,
+  DeleteUserCommand,
   ListWebAuthnCredentialsCommand,
   ResendConfirmationCodeCommand,
   SignUpCommand,
@@ -126,4 +127,11 @@ export async function listPasskeys(accessToken: string) {
   const r = await client().send(new ListWebAuthnCredentialsCommand({ AccessToken: accessToken }));
   const rp = process.env.PUBLIC_HOST;
   return (r.Credentials ?? []).filter((c) => !rp || c.RelyingPartyId === rp);
+}
+
+// App Store guideline 5.1.1(v): an app that creates accounts must let the user delete them.
+// ponytail: deletes the Cognito user only; rows in the orders and cart tables stay keyed by a sub
+// that no longer exists. Wipe them here if a client ever asks for it.
+export async function deleteAccount(accessToken: string) {
+  await client().send(new DeleteUserCommand({ AccessToken: accessToken }));
 }
