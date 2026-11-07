@@ -11,6 +11,8 @@ permissions:
 
 jobs:
   synth:
+    # workflow_dispatch can target any ref; deploy from main only (skips staging and prod too)
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -26,6 +28,7 @@ jobs:
           name: cdk-out
           path: cdk.out
           if-no-files-found: error
+          include-hidden-files: true
 
   staging:
     needs: synth
