@@ -142,7 +142,6 @@ export class BootstrapStack extends Stack {
             allow(["lambda:PublishLayerVersion", "lambda:GetLayerVersion", "lambda:DeleteLayerVersion"], [
               `arn:aws:lambda:${region}:${account}:layer:*`,
             ]),
-            allow(["lambda:Get*", "lambda:List*"], ["*"]),
             allow(["dynamodb:*"], [stageTables]),
             allow(["dynamodb:DescribeTable", "dynamodb:ListTables"], ["*"]),
             allow(["s3:*"], stageBuckets),
@@ -185,6 +184,9 @@ export class BootstrapStack extends Stack {
               ],
               ["*"],
             ),
+            // A distribution with a custom domain uses a certificate from us-east-1.
+            allow(["acm:DescribeCertificate"], [`arn:aws:acm:us-east-1:${account}:certificate/*`]),
+            allow(["acm:ListCertificates"], ["*"]),
             allow(
               [
                 "iam:GetRole",
@@ -223,6 +225,13 @@ export class BootstrapStack extends Stack {
             allow(["cloudformation:*"], [this.stackArn(`${p}-*`)]),
             allow(["iam:PassRole"], [execRoleArn]),
             allow(["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketLocation"], [cdkBucketArn, cdkObjects]),
+            // No import change sets: CloudFormation then only ever acts on (and tags) resources it created.
+            new iam.PolicyStatement({
+              effect: iam.Effect.DENY,
+              actions: ["cloudformation:CreateChangeSet"],
+              resources: ["*"],
+              conditions: { Null: { "cloudformation:ImportResourceTypes": "false" } },
+            }),
           ],
         }),
       },

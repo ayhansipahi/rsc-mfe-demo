@@ -85,8 +85,20 @@ test("the staging pipeline reaches only staging stacks and the staging exec role
   const bucket = `arn:aws:s3:::rsc-mfe-cdk-staging-${account}-${region}`;
   for (const action of ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:GetBucketLocation"])
     assert.deepEqual(resourcesFor(doc, action), [bucket, `${bucket}/*`]);
-  assert.equal(doc.Statement.length, 3);
+  assert.equal(doc.Statement.length, 4);
   assert.doesNotMatch(JSON.stringify(doc), /prod/);
+});
+
+test("pipeline roles cannot import existing resources into their stacks", () => {
+  for (const stage of stages) {
+    const deny = statementWith(policyOf(t, `rsc-mfe-gh-${stage.name}`), "cloudformation:CreateChangeSet");
+    assert.deepEqual(deny, {
+      Effect: "Deny",
+      Action: "cloudformation:CreateChangeSet",
+      Resource: "*",
+      Condition: { Null: { "cloudformation:ImportResourceTypes": "false" } },
+    });
+  }
 });
 
 test("pipeline roles trust one environment each", () => {
@@ -190,8 +202,15 @@ test("the exec role manages only its stage's names", () => {
     ["iam:PassRole", `arn:aws:iam::${account}:role/rsc-mfe-prod-account-WebRole-x`],
     ["iam:PassRole", execRoleArn("staging")],
     ["iam:DeleteRolePermissionsBoundary", `arn:aws:iam::${account}:role/rsc-mfe-staging-account-WebRole-x`],
+    ["lambda:GetFunction", `${prefix("lambda")}:function:other-workload`],
+    ["lambda:GetWebFunctionRevision", `${prefix("lambda")}:web-function/rsc-mfe-prod-web/revision/1`],
   ];
   for (const [action, arn] of denied) assert.ok(!allows(doc, action, arn), `${action} ${arn}`);
+  // Lambda reads return environment variables, so none is granted outside the stage's names.
+  for (const s of doc.Statement.filter((s) => resourcesOf(s).includes("*")))
+    assert.ok(!actionsOf(s).some((a) => a.startsWith("lambda:")), JSON.stringify(s));
+  assert.deepEqual(resourcesFor(doc, "acm:DescribeCertificate"), [`arn:aws:acm:us-east-1:${account}:certificate/*`]);
+  assert.deepEqual(resourcesFor(doc, "acm:ListCertificates"), ["*"]);
   for (const name of ["rsc-mfe-cfn-exec-staging", "rsc-mfe-boundary-staging", "rsc-mfe-gh-staging"])
     assert.doesNotMatch(JSON.stringify(policyOf(t, name)), /prod/);
   for (const name of ["rsc-mfe-cfn-exec-prod", "rsc-mfe-boundary-prod", "rsc-mfe-gh-prod"])
