@@ -46,7 +46,7 @@ jobs:
         env:
           STAGE: ${{ inputs.stage }}
         run: |
-          url=$(jq -er --arg k "rsc-mfe-${STAGE}-edge" '.[$k].SiteUrl' outputs.json)
+          url=$(jq -er --arg k "rsc-mfe-${STAGE}-edge" '.[$k].DistributionUrl' outputs.json)
           url="${url%/}"
           for path in / /orders /store /shell-static/fragments/header.js; do
             echo "GET ${url}${path}"

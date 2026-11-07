@@ -98,10 +98,10 @@ test("function origins: https only, TLSv1.2, 30s read, 60s keepalive, 3 attempts
   }
 });
 
-test("no domain: no aliases, SiteUrl is the CloudFront hostname", () => {
+test("no domain: no aliases, DistributionUrl is the CloudFront hostname", () => {
   const t = Template.fromStack(stagingEdge);
   t.hasResourceProperties("AWS::CloudFront::Distribution", { DistributionConfig: Match.objectLike({ Aliases: Match.absent() }) });
-  t.hasOutput("SiteUrl", { Value: { "Fn::Join": ["", ["https://", { "Fn::GetAtt": [Match.anyValue(), "DomainName"] }]] } });
+  t.hasOutput("DistributionUrl", { Value: { "Fn::Join": ["", ["https://", { "Fn::GetAtt": [Match.anyValue(), "DomainName"] }]] } });
 });
 
 test("with a domain: alias, certificate, TLSv1.2_2021", () => {
@@ -110,7 +110,7 @@ test("with a domain: alias, certificate, TLSv1.2_2021", () => {
     Aliases: ["staging.example.com"],
     ViewerCertificate: Match.objectLike({ MinimumProtocolVersion: "TLSv1.2_2021", SslSupportMethod: "sni-only" }),
   }) });
-  t.hasOutput("SiteUrl", { Value: "https://staging.example.com" });
+  t.hasOutput("DistributionUrl", { Value: { "Fn::Join": ["", ["https://", { "Fn::GetAtt": [Match.anyValue(), "DomainName"] }]] } });
 });
 
 test("only this distribution may read the bucket; plain http is denied", () => {

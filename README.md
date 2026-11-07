@@ -120,7 +120,7 @@ JSON
 gh api -X PUT repos/ayhansipahi/rsc-mfe-demo/branches/main/protection --input - <<'JSON'
 {"required_status_checks":{"strict":true,"contexts":["check"]},
  "enforce_admins":true,
- "required_pull_request_reviews":null,
+ "required_pull_request_reviews":{"required_approving_review_count":0},
  "restrictions":null}
 JSON
 ```
@@ -132,10 +132,10 @@ To move an existing environment from the old shell scripts, follow
 
 ### Attaching a domain
 
-A stage starts on its CloudFront address (the `SiteUrl` output of the `rsc-mfe-<stage>-edge` stack).
+A stage is reachable on its CloudFront address (the `DistributionUrl` output of the `rsc-mfe-<stage>-edge` stack). The pipeline's smoke test uses that address, so it does not depend on DNS.
 To use your own name: request an ACM certificate for it in `us-east-1`, set `domain: { name, certificateArn }`
 on the stage in `infra/stages.ts`, merge through the pipeline, then point a CNAME for the name at the
-distribution's address.
+`DistributionUrl` host (the distribution's `*.cloudfront.net` name).
 
 ### Permissions and what they leave open
 

@@ -132,6 +132,7 @@ export class EdgeStack extends StageStack {
       }),
     });
 
-    new CfnOutput(this, "SiteUrl", { value: `https://${domain?.name ?? this.distribution.distributionDomainName}` });
+    // Always the CloudFront name: it keeps answering with an alias attached, and it is the CNAME target.
+    new CfnOutput(this, "DistributionUrl", { value: `https://${this.distribution.distributionDomainName}` });
   }
 }

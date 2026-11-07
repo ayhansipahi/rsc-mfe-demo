@@ -11,11 +11,11 @@ provider), `AWS_ACCOUNT_ID`, the `staging` and `prod` environments, branch prote
 ## 2. Build staging and prod
 
 Merge to `main`. The pipeline deploys staging, waits for approval, then deploys prod. Prod has no `domain`
-yet, so it comes up on its CloudFront address without the `rscmfe.sph.sh` alias. Get that address:
+yet, so it comes up on its CloudFront address without the `rscmfe.sph.sh` alias. The smoke test hits the distribution directly, so it passes regardless of DNS. Get that address:
 
 ```bash
 aws cloudformation describe-stacks --region eu-central-1 --stack-name rsc-mfe-prod-edge \
-  --query "Stacks[0].Outputs[?OutputKey=='SiteUrl'].OutputValue" --output text
+  --query "Stacks[0].Outputs[?OutputKey=='DistributionUrl'].OutputValue" --output text
 ```
 
 ## 3. Cutover (a few minutes of downtime)
@@ -31,29 +31,33 @@ aws cloudformation describe-stacks --region eu-central-1 --stack-name rsc-mfe-pr
    ```
    Merge, approve the prod deploy.
 3. The owner points the `rscmfe.sph.sh` CNAME at the new distribution's domain name
-   (`aws cloudformation describe-stacks ... rsc-mfe-prod-edge`, or the distribution in the console).
+   (the `DistributionUrl` host from step 2; it stays the same after the alias is attached).
 
 ## 4. Demo user and orders
 
-The new pool is empty. Recreate the App Store review demo user with the same email and password as in
-`docs/app-store/review-notes.txt` (and the App Store Connect Demo Account fields); do not copy the password anywhere else.
+The new pool is empty. Recreate the App Store review demo user with the same email and password as in the
+"Demo Account" fields of the app's review information in App Store Connect
+(`docs/app-store/review-notes.txt` only refers to them); do not copy the password anywhere else.
 
 ```bash
 POOL=$(aws cognito-idp list-user-pools --region eu-central-1 --max-results 20 \
   --query "UserPools[?Name=='rsc-mfe-prod-users'].Id | [0]" --output text)
-EMAIL=<demo email from review-notes.txt>
+EMAIL=<demo email from App Store Connect>
 aws cognito-idp admin-create-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
   --message-action SUPPRESS --user-attributes Name=email,Value="$EMAIL" Name=email_verified,Value=true
 aws cognito-idp admin-set-user-password --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
-  --password '<demo password from review-notes.txt>' --permanent
+  --password '<demo password from App Store Connect>' --permanent
 SUB=$(aws cognito-idp admin-get-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
   --query "UserAttributes[?Name=='sub'].Value | [0]" --output text)
 
-for row in "ORD-1TL Keyboard 31.00" "ORD-7XK Monitor 46.00" "ORD-E1J Cable 61.00"; do
-  set -- $row
+while read -r id item total; do
   aws dynamodb put-item --region eu-central-1 --table-name rsc-mfe-prod-orders \
-    --item "{\"owner\":{\"S\":\"$SUB\"},\"orderId\":{\"S\":\"$1\"},\"item\":{\"S\":\"$2\"},\"total\":{\"S\":\"$3\"}}"
-done
+    --item "{\"owner\":{\"S\":\"$SUB\"},\"orderId\":{\"S\":\"$id\"},\"item\":{\"S\":\"$item\"},\"total\":{\"S\":\"$total\"}}"
+done <<'ROWS'
+ORD-1TL Keyboard 31.00
+ORD-7XK Monitor 46.00
+ORD-E1J Cable 61.00
+ROWS
 ```
 
 If the account app does not allow admin password auth, sign the user up through the app instead and run only the
@@ -67,7 +71,7 @@ Only then delete, all in `eu-north-1` (`R=eu-north-1`). Deletion is permanent.
 ```bash
 R=eu-north-1
 for f in rsc-mfe-web rsc-mfe-shell-web rsc-mfe-orders-web rsc-mfe-store-web rsc-mfe-orders-api rsc-mfe-cart-api; do
-  aws lambda delete-function --region $R --function-name "$f"
+  aws lambda-web delete-web-function --region $R --function-name "$f"
   for p in $(aws iam list-attached-role-policies --role-name "$f-role" --query 'AttachedPolicies[].PolicyArn' --output text); do
     aws iam detach-role-policy --role-name "$f-role" --policy-arn "$p"
   done
