@@ -1,0 +1,54 @@
+name: Deploy stage
+
+on:
+  workflow_call:
+    inputs:
+      stage:
+        description: Stage to deploy (staging or prod)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.stage }}
+    concurrency:
+      group: deploy-${{ inputs.stage }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v5
+        with:
+          name: cdk-out
+          path: cdk.out
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/rsc-mfe-gh-${{ inputs.stage }}
+          aws-region: eu-central-1
+      - name: Deploy
+        run: >
+          npx cdk deploy --app cdk.out --require-approval never
+          --role-arn arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/rsc-mfe-cfn-exec-${{ inputs.stage }}
+          --outputs-file outputs.json
+          "${{ inputs.stage }}/*"
+      - name: Smoke test
+        env:
+          STAGE: ${{ inputs.stage }}
+        run: |
+          url=$(jq -er --arg k "rsc-mfe-${STAGE}-edge" '.[$k].SiteUrl' outputs.json)
+          url="${url%/}"
+          for path in / /orders /store /shell-static/fragments/header.js; do
+            echo "GET ${url}${path}"
+            curl -fsS -o /dev/null --retry 5 --retry-all-errors --retry-delay 10 "${url}${path}"
+          done
