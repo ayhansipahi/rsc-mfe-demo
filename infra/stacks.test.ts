@@ -13,31 +13,62 @@ const prod = stages.find((s) => s.name === "prod")!;
 const { assets, account, ordersApi, cartApi, shell, ordersWeb, storeWeb } = build(staging);
 const stagingStacks = Object.values({ assets, account, ordersApi, cartApi, shell, ordersWeb, storeWeb });
 
-type Stmt = { Action: string | string[] };
+type Stmt = { Action: string | string[]; Resource: unknown };
 type Resource = { Properties: Record<string, any> };
 
-function policies(stack: Stack): Resource[] {
-  return Object.values(Template.fromStack(stack).findResources("AWS::IAM::Policy")) as Resource[];
+/** Logical id of the web function's execution role, read from its revision. */
+function functionRoleId(stack: Stack): string {
+  const [rev] = Object.values(Template.fromStack(stack).findResources("AWS::Lambda::WebFunctionRevision")) as Resource[];
+  return rev.Properties.ServiceConfig.ExecutionRoleArn["Fn::GetAtt"][0];
 }
-function countPolicies(stack: { fn?: unknown } & Stack): number {
-  return policies(stack).length;
+/** Statements of the policies attached to the web function role (not to e.g. a BucketDeployment's role). */
+function statements(stack: Stack): Stmt[] {
+  const roleId = functionRoleId(stack);
+  return (Object.values(Template.fromStack(stack).findResources("AWS::IAM::Policy")) as Resource[])
+    .filter((p) => (p.Properties.Roles as { Ref?: string }[]).some((r) => r.Ref === roleId))
+    .flatMap((p) => p.Properties.PolicyDocument.Statement as Stmt[]);
 }
-function assertRolePolicy(stack: Stack, expected: string[]) {
-  const actions = policies(stack).flatMap((p) =>
-    (p.Properties.PolicyDocument.Statement as Stmt[]).flatMap((s) => (Array.isArray(s.Action) ? s.Action : [s.Action])),
-  );
-  assert.deepEqual([...actions].sort(), [...expected].sort());
+function countPolicies(stack: Stack): number {
+  return statements(stack).length;
 }
+function logicalId(stack: Stack, type: string): string {
+  const [id] = Object.keys(Template.fromStack(stack).findResources(type));
+  return id;
+}
+/** The role holds exactly one statement: these actions, on exactly these resources. */
+function assertRolePolicy(stack: Stack, actions: string[], resources: unknown[]) {
+  const stmts = statements(stack);
+  assert.equal(stmts.length, 1);
+  assert.deepEqual([...[stmts[0].Action].flat()].sort(), [...actions].sort());
+  assert.deepEqual([stmts[0].Resource].flat(), resources);
+}
+const arnOf = (stack: Stack, type: string) => ({ "Fn::GetAtt": [logicalId(stack, type), "Arn"] });
+
 function revisionEnv(stack: Stack): Record<string, any> {
   const [rev] = Object.values(Template.fromStack(stack).findResources("AWS::Lambda::WebFunctionRevision")) as Resource[];
   return rev.Properties.ServiceConfig.EnvironmentVariables ?? {};
 }
 
-test("each function holds only its own grants", () => {
-  assertRolePolicy(ordersApi, ["dynamodb:Query"]);
-  assertRolePolicy(cartApi, ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:DeleteItem"]);
-  assertRolePolicy(account, ["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"]);
-  assertRolePolicy(storeWeb, ["bedrock:InvokeModel"]);
+test("each function holds only its own grants, on its own resources", () => {
+  assertRolePolicy(ordersApi, ["dynamodb:Query"], [arnOf(ordersApi, "AWS::DynamoDB::Table")]);
+  assertRolePolicy(
+    cartApi,
+    ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:DeleteItem"],
+    [arnOf(cartApi, "AWS::DynamoDB::Table")],
+  );
+  assertRolePolicy(
+    account,
+    ["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"],
+    [arnOf(account, "AWS::Cognito::UserPool")],
+  );
+  assertRolePolicy(
+    storeWeb,
+    ["bedrock:InvokeModel"],
+    [
+      `arn:aws:bedrock:eu-central-1:${staging.account}:inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
+      "arn:aws:bedrock:eu-*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
+    ],
+  );
   assert.equal(countPolicies(ordersWeb) + countPolicies(shell), 0);
 });
 
