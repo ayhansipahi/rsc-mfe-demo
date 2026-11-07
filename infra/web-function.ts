@@ -79,13 +79,15 @@ export class WebFunction extends Construct {
     this.url = `https://${this.domainName}`;
 
     if (clientAssets && Stack.of(this).bundlingRequired) {
-      new s3deploy.BucketDeployment(this, "ClientAssets", {
+      const deployment = new s3deploy.BucketDeployment(this, "ClientAssets", {
         sources: [s3deploy.Source.asset(path.join(root, packageDir, "build/client/assets"))],
         destinationBucket: clientAssets.bucket,
         destinationKeyPrefix: clientAssets.prefix,
         prune: false,
         cacheControl: [s3deploy.CacheControl.fromString("public,max-age=31536000,immutable")],
       });
+      // New hashed assets must be in S3 before any traffic can reach the revision that references them.
+      revision.node.addDependency(deployment);
     }
   }
 }
