@@ -16,6 +16,14 @@ export interface SessionUser {
   sub: string;
   username: string;
   token: string;
+  /** The request's x-flow-id (set by requestLog in index.js), forwarded to services by serviceHeaders. */
+  flow?: string;
+}
+
+// Headers for an app's call to its team's service: the user's token as a bearer, plus the flow id
+// so the service's log line carries the same id as the page's.
+export function serviceHeaders(user: Pick<SessionUser, "token" | "flow">): Record<string, string> {
+  return { authorization: `Bearer ${user.token}`, ...(user.flow && { "x-flow-id": user.flow }) };
 }
 
 function readCookie(request: Request): string | undefined {
@@ -25,14 +33,15 @@ function readCookie(request: Request): string | undefined {
 // Platform contract + local stub: a vertical running on its own has no account app to sign in
 // with, so outside production DEV_SESSION names the user. Production builds never read it.
 export async function getUser(request: Request): Promise<SessionUser | null> {
+  const flow = request.headers.get("x-flow-id") ?? undefined;
   if (process.env.NODE_ENV !== "production" && process.env.DEV_SESSION) {
-    return { sub: "dev", username: process.env.DEV_SESSION, token: "dev" };
+    return { sub: "dev", username: process.env.DEV_SESSION, token: "dev", ...(flow && { flow }) };
   }
   const token = readCookie(request);
   if (!token) return null;
   try {
     const payload = await getVerifier().verify(token);
-    return { sub: payload.sub, username: String(payload.username), token };
+    return { sub: payload.sub, username: String(payload.username), token, ...(flow && { flow }) };
   } catch {
     return null;
   }

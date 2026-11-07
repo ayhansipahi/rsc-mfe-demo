@@ -39,6 +39,9 @@ loaded from its owner. A shell deploy changes the header on every page without r
 app; an app deploy changes only its own `main`. Add `?stitch` to any URL to outline each area
 with its owner and build time, and look at the `x-vertical` response header to see which
 function answered.
+Every response also carries `x-flow-id`: minted by the first function a request reaches,
+forwarded by an app to its service with the bearer, and printed in the one JSON log line each
+function writes per request. One id in CloudWatch finds the page and the service calls behind it.
 
 Every `<rsc-*>` tag ships with server HTML inside it: the nav links, the cart and sign-in
 links, the footer line. Crawlers and users without the script yet get that; the fragment's shadow

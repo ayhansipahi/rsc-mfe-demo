@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./session.server": "./src/session.server.ts",
+    "./node.server": "./src/node.server.js",
     "./chrome.server": "./src/chrome.server.ts",
     "./layout": "./src/layout.tsx",
     "./styles": "./src/styles.ts",
@@ -18,8 +19,9 @@
     "test": "node --test src"
   },
   "dependencies": {
+    "@hono/node-server": "2.1.6",
     "aws-jwt-verify": "5.2.1",
-    "express": "5.3.0"
+    "hono": "4.13.16"
   },
   "peerDependencies": {
     "react": "^19.2.8",

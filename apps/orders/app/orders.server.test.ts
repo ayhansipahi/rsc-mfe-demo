@@ -8,18 +8,20 @@ test("an unreachable orders service is a 502 Response", async () => {
   await assert.rejects(listOrders({ token: "t" }), (e: unknown) => e instanceof Response && e.status === 502);
 });
 
-test("orders come from the service with the user's bearer token", async () => {
-  let auth: string | undefined;
+test("orders come from the service with the user's bearer token and flow id", async () => {
+  let auth: string | undefined, flow: string | string[] | undefined;
   const server = http.createServer((req, res) => {
     auth = req.headers.authorization;
+    flow = req.headers["x-flow-id"];
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify([{ orderId: "O1", item: "Kbd", total: "1.00" }]));
   });
   await new Promise<void>((ok) => server.listen(0, ok));
   process.env.ORDERS_API_URL = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
   try {
-    assert.deepEqual(await listOrders({ token: "t" }), [{ orderId: "O1", item: "Kbd", total: "1.00" }]);
+    assert.deepEqual(await listOrders({ token: "t", flow: "flow-3" }), [{ orderId: "O1", item: "Kbd", total: "1.00" }]);
     assert.equal(auth, "Bearer t");
+    assert.equal(flow, "flow-3");
   } finally {
     server.close();
   }
