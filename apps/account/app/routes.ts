@@ -8,6 +8,8 @@ export default [
   route("signup", "routes/signup.tsx"),
   route("logout", "routes/logout.ts"),
   route("account", "routes/account.tsx"),
+  route("privacy", "routes/privacy.tsx"),
+  route("support", "routes/support.tsx"),
   // Resource routes (no component): the passkey ceremony's server half and the session contract.
   route("auth/passkey", "routes/auth.passkey.ts"),
   route("auth/me", "routes/auth.me.ts"),

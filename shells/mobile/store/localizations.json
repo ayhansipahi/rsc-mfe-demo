@@ -1,0 +1,9 @@
+{
+  "en-US": {
+    "description": "RSC Shell is a small store you carry in your pocket. Browse the catalog, keep a cart that follows you from phone to browser, and look back at your orders.\n\n• Photo search: point the camera at a product and the store finds it in the catalog.\n• Passkeys: sign in with Face ID instead of a password.\n• App lock: the app locks with Face ID when you leave it.\n• One account everywhere: your cart and orders are the same on the web at rscmfe.sph.sh.\n\nEvery tab is built and shipped by its own team, so new features reach you without an app update.",
+    "keywords": "store,shop,shopping,cart,orders,photo search,camera,passkey,face id,catalog",
+    "promotionalText": "Point your camera at a product and find it in the store. Sign in with a passkey, no password to remember.",
+    "marketingURL": "https://rscmfe.sph.sh",
+    "supportURL": "https://rscmfe.sph.sh/support"
+  }
+}
