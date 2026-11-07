@@ -5,6 +5,7 @@
 # env: CREATE=1 for the first deploy, DRY=1 to stop before the AWS call, AWS_REGION (eu-north-1),
 #      WEIGHT=<1-100> to route only that share of traffic to the new revision (see lambda-rollout.sh);
 #      unset, the new revision takes all traffic as before. The first deploy always takes all.
+#      ASSET_BASE (set by the app's deploy.sh) and ASSETS_BUCKET (rsc-mfe-assets) for client assets.
 set -euo pipefail
 PKG=$1
 NAME=$2
@@ -24,6 +25,13 @@ rm -f package-lock.json
 # The isolated install brought its own react-router: patch that copy too (no-op where absent).
 node "$ROOT/scripts/patch-react-router.mjs"
 [ -n "${DRY:-}" ] && { echo "DRY: would deploy $PKG as $NAME"; rm -rf node_modules; exit 0; }
+# Hashed client assets go to S3 (every build adds, none deletes), so a page's HTML finds its files
+# whichever revision is serving. ASSET_BASE is the app's Vite base ("/orders-static"; empty for the
+# account app at "/"). The function keeps serving them too, as a fallback nobody should hit.
+if [ -d build/client/assets ]; then
+  aws s3 sync build/client/assets "s3://${ASSETS_BUCKET:-rsc-mfe-assets}${ASSET_BASE:-}/assets" \
+    --region "$REGION" --cache-control "public,max-age=31536000,immutable" --only-show-errors
+fi
 ROLE_ARN=$(aws iam get-role --role-name "$NAME-role" --query Role.Arn --output text)
 aws lambda-web deploy --region "$REGION" --name "$NAME" --code . --execution-role-arn "$ROLE_ARN" \
   ${CREATE:+--create --auth-type ApplicationManaged} "$@"

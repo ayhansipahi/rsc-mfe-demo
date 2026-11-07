@@ -6,6 +6,7 @@
 #      PUBLIC_HOST (the CloudFront domain).
 set -euo pipefail
 : "${ORDERS_API_URL:?}" "${COGNITO_USER_POOL_ID:?}" "${COGNITO_CLIENT_ID:?}"
+export ASSET_BASE=/orders-static
 exec "$(dirname "$0")/../../../scripts/lambda-deploy.sh" apps/orders rsc-mfe-orders-web \
   --env ORDERS_API_URL="$ORDERS_API_URL" \
   --env COGNITO_USER_POOL_ID="$COGNITO_USER_POOL_ID" --env COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \

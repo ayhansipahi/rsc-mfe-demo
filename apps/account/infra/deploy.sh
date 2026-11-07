@@ -4,6 +4,7 @@
 #      PUBLIC_HOST (the CloudFront domain), APPLE_APP_IDS, ANDROID_PACKAGE, ANDROID_CERT_SHA256 (mobile passkeys).
 set -euo pipefail
 : "${COGNITO_USER_POOL_ID:?}" "${COGNITO_CLIENT_ID:?}"
+export ASSET_BASE=
 exec "$(dirname "$0")/../../../scripts/lambda-deploy.sh" apps/account rsc-mfe-web \
   --env COGNITO_USER_POOL_ID="$COGNITO_USER_POOL_ID" --env COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
   ${COGNITO_CLIENT_SECRET:+--env COGNITO_CLIENT_SECRET="$COGNITO_CLIENT_SECRET"} \
