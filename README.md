@@ -35,8 +35,10 @@ An app renders `<Page>` from the shell, which draws three areas:
 ```
 
 The header places the store's mini cart and the account's sign-in button inside itself, each
-loaded from its owner. A shell deploy changes the header on every page without rebuilding an
-app; an app deploy changes only its own `main`. Add `?stitch` to any URL to outline each area
+loaded from its owner. A shell deploy changes the header, the footer and the page frame (the
+stylesheet `fragments/chrome.css`, linked by `Page`) on every page without rebuilding an app; an
+app deploy changes only its own `main`. Changing `Page`'s markup itself (`src/layout.tsx`) still
+needs every app rebuilt. Add `?stitch` to any URL to outline each area
 with its owner and build time, and look at the `x-vertical` response header to see which
 function answered.
 Every response also carries `x-flow-id`: minted by the first function a request reaches,
@@ -60,7 +62,7 @@ DEV_SESSION=me@example.com npm run dev -w services/orders          # :4001, need
 ORDERS_API_URL=http://localhost:4001 DEV_SESSION=me@example.com npm run dev -w apps/orders   # :5173
 ```
 
-Open `http://localhost:5173/orders`. Header and footer are empty slots until the shell runs too:
+Open `http://localhost:5173/orders`. Header and footer are unstyled placeholders until the shell runs too:
 
 ```bash
 npm run dev -w shells/web                                             # :4000

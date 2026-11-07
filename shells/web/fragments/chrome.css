@@ -1,0 +1,84 @@
+/* The page frame and the server HTML of <rsc-header> and <rsc-footer>, served by the shell at
+   /shell-static/fragments/chrome.css (built __BUILD__). Every app's Page links it, so a shell deploy
+   changes all of this on every page without rebuilding an app. Plain CSS, outside Tailwind's
+   layers, so it wins over the apps' utilities whatever the load order. The placeholders must keep
+   the boxes header.js and footer.js draw in their shadow roots (page CSS cannot reach in there);
+   change both sides together. */
+
+:root {
+  --shell-bg: #fff; /* the page background, app.css: bg-white / dark:bg-gray-950 */
+  --shell-line: #e5e5e5;
+  --shell-muted: #525252;
+  --shell-faint: #737373;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shell-bg: oklch(13% 0.028 261.692);
+    --shell-line: #262626;
+    --shell-muted: #a3a3a3;
+    --shell-faint: #a3a3a3;
+  }
+}
+
+/* Keep room for a classic scrollbar even when the page fits, so content that grows late (a
+   fragment filling in, a loader) cannot bring one in and shift every centered block sideways. */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* A column at least one window tall: on a short page the footer (margin-top: auto) sits at the
+   bottom of the window; on a long one it sticks to the bottom of the window while the content
+   scrolls under it, and rests after the content at the end. svh, not dvh: a mobile URL bar
+   sliding in and out does not move it. */
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+/* Reserve the header's height (32px boxes plus 8px padding each side plus the 1px border, as the
+   nav draws) so the page does not jump when it fills in. */
+rsc-header {
+  display: block;
+  min-height: 49px;
+}
+rsc-footer {
+  display: block;
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  background: var(--shell-bg); /* content scrolls under it */
+}
+
+rsc-header > nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 49px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--shell-line);
+  font-size: 14px;
+  line-height: 20px;
+}
+rsc-header > nav a {
+  border-radius: 6px;
+  padding: 6px 12px;
+  color: var(--shell-muted);
+}
+rsc-header > nav > span {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+rsc-header > nav a > span {
+  margin-left: 4px;
+  font-weight: 500;
+}
+
+rsc-footer > footer {
+  padding: 24px 16px;
+  border-top: 1px solid var(--shell-line);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--shell-faint);
+}
