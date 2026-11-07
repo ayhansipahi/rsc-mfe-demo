@@ -1,0 +1,103 @@
+# Runbook: move prod from eu-north-1 (shell scripts) to eu-central-1 (CDK pipeline)
+
+One time, run by the account admin (`644789169398`). Not part of the template's normal flow.
+Old resources live in `eu-north-1`; new ones in `eu-central-1`.
+
+## 1. Bootstrap and GitHub settings
+
+Follow "One-time setup" in the README: bootstrap stack (`CreateOidcProvider=false`, this account has the
+provider), `AWS_ACCOUNT_ID`, the `staging` and `prod` environments, branch protection on `main`.
+
+## 2. Build staging and prod
+
+Merge to `main`. The pipeline deploys staging, waits for approval, then deploys prod. Prod has no `domain`
+yet, so it comes up on its CloudFront address without the `rscmfe.sph.sh` alias. Get that address:
+
+```bash
+aws cloudformation describe-stacks --region eu-central-1 --stack-name rsc-mfe-prod-edge \
+  --query "Stacks[0].Outputs[?OutputKey=='SiteUrl'].OutputValue" --output text
+```
+
+## 3. Cutover (a few minutes of downtime)
+
+1. Remove the `rscmfe.sph.sh` alias from the old distribution `E38EEA6HS61O94` (console, or
+   `aws cloudfront get-distribution-config` / `update-distribution` with the alias removed).
+2. In a PR, set prod's domain in `infra/stages.ts`:
+   ```ts
+   domain: {
+     name: "rscmfe.sph.sh",
+     certificateArn: "arn:aws:acm:us-east-1:644789169398:certificate/2ce976c9-3236-4a77-bd0a-bcf27799271c",
+   },
+   ```
+   Merge, approve the prod deploy.
+3. The owner points the `rscmfe.sph.sh` CNAME at the new distribution's domain name
+   (`aws cloudformation describe-stacks ... rsc-mfe-prod-edge`, or the distribution in the console).
+
+## 4. Demo user and orders
+
+The new pool is empty. Recreate the App Store review demo user with the same email and password as in
+`docs/app-store/review-notes.txt` (and the App Store Connect Demo Account fields); do not copy the password anywhere else.
+
+```bash
+POOL=$(aws cognito-idp list-user-pools --region eu-central-1 --max-results 20 \
+  --query "UserPools[?Name=='rsc-mfe-prod-users'].Id | [0]" --output text)
+EMAIL=<demo email from review-notes.txt>
+aws cognito-idp admin-create-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
+  --message-action SUPPRESS --user-attributes Name=email,Value="$EMAIL" Name=email_verified,Value=true
+aws cognito-idp admin-set-user-password --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
+  --password '<demo password from review-notes.txt>' --permanent
+SUB=$(aws cognito-idp admin-get-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
+  --query "UserAttributes[?Name=='sub'].Value | [0]" --output text)
+
+for row in "ORD-1TL Keyboard 31.00" "ORD-7XK Monitor 46.00" "ORD-E1J Cable 61.00"; do
+  set -- $row
+  aws dynamodb put-item --region eu-central-1 --table-name rsc-mfe-prod-orders \
+    --item "{\"owner\":{\"S\":\"$SUB\"},\"orderId\":{\"S\":\"$1\"},\"item\":{\"S\":\"$2\"},\"total\":{\"S\":\"$3\"}}"
+done
+```
+
+If the account app does not allow admin password auth, sign the user up through the app instead and run only the
+seed loop with that user's `sub`.
+
+## 5. Smoke test, then delete the old resources
+
+Sign in as the demo user on `https://rscmfe.sph.sh` (and on the iOS app), check orders and cart.
+Only then delete, all in `eu-north-1` (`R=eu-north-1`). Deletion is permanent.
+
+```bash
+R=eu-north-1
+for f in rsc-mfe-web rsc-mfe-shell-web rsc-mfe-orders-web rsc-mfe-store-web rsc-mfe-orders-api rsc-mfe-cart-api; do
+  aws lambda delete-function --region $R --function-name "$f"
+  for p in $(aws iam list-attached-role-policies --role-name "$f-role" --query 'AttachedPolicies[].PolicyArn' --output text); do
+    aws iam detach-role-policy --role-name "$f-role" --policy-arn "$p"
+  done
+  for p in $(aws iam list-role-policies --role-name "$f-role" --query 'PolicyNames[]' --output text); do
+    aws iam delete-role-policy --role-name "$f-role" --policy-name "$p"
+  done
+  aws iam delete-role --role-name "$f-role"
+done
+
+aws dynamodb delete-table --region $R --table-name rsc-mfe-orders
+aws dynamodb delete-table --region $R --table-name rsc-mfe-carts
+aws cognito-idp delete-user-pool --region $R --user-pool-id eu-north-1_Xk6oBtn8p
+aws s3 rb s3://rsc-mfe-assets --force --region $R
+
+# Distribution: disable, wait until deployed, delete, then its policies.
+ETAG=$(aws cloudfront get-distribution-config --id E38EEA6HS61O94 --query ETag --output text)
+aws cloudfront get-distribution-config --id E38EEA6HS61O94 --query DistributionConfig \
+  | jq '.Enabled=false' > /tmp/dist.json
+aws cloudfront update-distribution --id E38EEA6HS61O94 --if-match "$ETAG" --distribution-config file:///tmp/dist.json
+aws cloudfront wait distribution-deployed --id E38EEA6HS61O94
+ETAG=$(aws cloudfront get-distribution-config --id E38EEA6HS61O94 --query ETag --output text)
+aws cloudfront delete-distribution --id E38EEA6HS61O94 --if-match "$ETAG"
+
+CP=$(aws cloudfront list-cache-policies --type custom \
+  --query "CachePolicyList.Items[?CachePolicy.CachePolicyConfig.Name=='rsc-mfe-origin-cc-qs'].CachePolicy.Id | [0]" --output text)
+aws cloudfront delete-cache-policy --id "$CP" --if-match "$(aws cloudfront get-cache-policy --id "$CP" --query ETag --output text)"
+aws cloudfront delete-origin-access-control --id E1D9M5TY1ZDL8V \
+  --if-match "$(aws cloudfront get-origin-access-control --id E1D9M5TY1ZDL8V --query ETag --output text)"
+```
+
+The old distribution also had a response headers policy; find it with
+`aws cloudfront list-response-headers-policies --type custom` and delete it the same way
+(`delete-response-headers-policy`) once it names no distribution.
