@@ -86,3 +86,18 @@ Then one distribution (`shells/web/infra/cloudfront.sh <account-function-host>`)
 per other function: `shells/web/infra/cloudfront-vertical.sh <dist> shell|orders|store <host>`.
 Each `deploy.sh` header lists the env it needs (`ORDERS_API_URL`, `CART_API_URL`, the Cognito
 ids, `PUBLIC_HOST`). `DRY=1` runs everything up to the AWS call.
+
+### Rolling out
+
+A deploy creates a revision; which revision an endpoint serves is a separate setting (revision
+weights). `deploy.sh` moves all traffic to the new revision unless `WEIGHT` says otherwise:
+
+```bash
+WEIGHT=10 apps/orders/infra/deploy.sh          # new revision takes 10%, the current one keeps 90%
+scripts/lambda-rollout.sh rsc-mfe-orders-web 50  # widen
+scripts/lambda-rollout.sh rsc-mfe-orders-web 100 # finish
+scripts/lambda-rollout.sh rsc-mfe-orders-web rollback  # 100% back to the previous revision
+```
+
+Each step is one endpoint update, live in seconds. Judge health between steps from the logs
+(the build id is in `data-build` and `?stitch`); nothing rolls back on its own.
