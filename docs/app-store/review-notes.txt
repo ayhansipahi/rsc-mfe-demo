@@ -1,0 +1,29 @@
+RSC Shell is a B2B architecture reference app from sph.sh, a software consultancy. We show it to prospective clients to demonstrate a micro-frontend architecture: independently deployed React Server Components verticals (account, orders, store) running on AWS Lambda behind CloudFront, composed inside this native iOS shell. An unlisted app distribution request has been filed for this app (Apple ID 6830774732).
+
+1. SCREEN RECORDING
+Attached as an App Review attachment (recorded on a physical iPhone running the latest iOS). It starts at app launch and shows: sign-in with the demo account, Face ID unlock, the Orders tab, the Store tab (add to cart, cart), the Account tab, and the Delete account flow.
+
+2. PURPOSE AND AUDIENCE
+Audience: prospective corporate clients evaluating a replatforming project, and our own consultants during sales and architecture meetings. Problem it solves: lets a client try on their own phone how separately owned web verticals stitch together in one native app, with native sign-in, Face ID and camera, instead of reading slides. Value: a working, deployed example they can install from a link.
+
+3. SETUP AND MAIN FEATURES
+- Sign in with the demo account provided in the Demo Account fields (or create a new account with any email; a confirmation code is emailed).
+- Orders tab: the signed-in user's sample orders.
+- Store tab: catalog, add to cart, cart. The camera button lets you photograph an item and the store suggests matching catalog products.
+- Account tab: email, passkeys, Sign out, and Delete account (under the "Delete account" disclosure; confirms, deletes the account and signs out).
+- Face ID lock on launch and on return from background when signed in (falls back to passcode; skipped if no biometrics are enrolled).
+No sample files are needed. There is no paid content, no in-app purchase and no user-generated content visible to other users.
+
+4. EXTERNAL SERVICES
+- AWS Cognito: authentication (email + password, passkeys).
+- AWS Lambda, CloudFront, DynamoDB: hosting and data for the verticals, served from rscmfe.sph.sh.
+- Amazon Bedrock (Anthropic Claude Haiku): photo search in the Store tab; the photo is sent to the model to name matching catalog products and is not stored.
+No analytics, ads or third-party SDKs beyond Expo modules (local authentication, image picker).
+
+5. REGIONAL DIFFERENCES
+None. The app functions identically in all regions.
+
+6. REGULATED INDUSTRY / PROTECTED MATERIAL
+Not applicable. All catalog and order data is sample data owned by us.
+
+Contact: Ayhan Sipahi, info@ayhansipahi.net, +49 176 29183750.
