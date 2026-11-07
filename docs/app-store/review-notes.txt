@@ -1,7 +1,13 @@
 RSC Shell is a B2B architecture reference app from sph.sh, a software consultancy. We show it to prospective clients to demonstrate a micro-frontend architecture: independently deployed React Server Components verticals (account, orders, store) running on AWS Lambda behind CloudFront, composed inside this native iOS shell. An unlisted app distribution request has been filed for this app (Apple ID 6830774732).
 
 1. SCREEN RECORDING
-Attached as an App Review attachment (recorded on a physical iPhone running the latest iOS). It starts at app launch and shows: sign-in with the demo account, Face ID unlock, the Orders tab, the Store tab (add to cart, cart), the Account tab, and the Delete account flow.
+No recording is attached. The full flow takes under two minutes with the demo account and is reproducible on any iPhone:
+  a. Launch the app. The Home tab loads from rscmfe.sph.sh.
+  b. Tap the Account tab, sign in with the demo account (Demo Account fields). Face ID is offered on later launches.
+  c. Orders tab: the demo user's sample orders.
+  d. Store tab: add an item to the cart, open the cart from the header.
+  e. Account tab: Sign out, and "Delete account" (disclosure, then "Delete my account"). To see deletion without removing the demo account, create a throwaway account via "Create an account" (any email; a code is emailed) and delete that one.
+Account creation, login and deletion are all in the Account tab. There is no user-generated content shared between users and no paid content.
 
 2. PURPOSE AND AUDIENCE
 Audience: prospective corporate clients evaluating a replatforming project, and our own consultants during sales and architecture meetings. Problem it solves: lets a client try on their own phone how separately owned web verticals stitch together in one native app, with native sign-in, Face ID and camera, instead of reading slides. Value: a working, deployed example they can install from a link.
