@@ -103,7 +103,8 @@ export function Page({ shell, owner, build, shellOrigin, stitch, email, cartCoun
           </rsc-header>
         </>
       )}
-      <main data-owner={owner} data-build={build} className="mx-auto max-w-3xl space-y-4 p-6">
+      {/* w-full: .root is a flex column (app.css), where mx-auto alone would shrink main to its content. */}
+      <main data-owner={owner} data-build={build} className="mx-auto w-full max-w-3xl space-y-4 p-6">
         {children}
       </main>
       {!shell && (
@@ -111,7 +112,7 @@ export function Page({ shell, owner, build, shellOrigin, stitch, email, cartCoun
           {/* Same box as fragments/footer.js draws (padding, border, line height), so the page does
               not grow when the script runs: on a page just shorter than the window that growth
               brings in a scrollbar and every centered block shifts sideways. */}
-          <footer className="mx-auto max-w-3xl border-t border-neutral-200 p-6 text-xs leading-[1.4] text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+          <footer className="border-t border-neutral-200 px-4 py-6 text-xs leading-[1.4] text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
             RSC micro-frontend demo
           </footer>
         </rsc-footer>

@@ -20,8 +20,14 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* A column at least one window tall, so on a short page the footer (margin-top: auto, below) sits
+   at the bottom of the window and on a long one after the content. svh, not dvh: a mobile URL bar
+   sliding in and out does not move the footer. */
 .root {
   isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
 }
 
 /* ?stitch: show the seams. Every area a team owns carries data-owner and data-build; this outlines
@@ -55,4 +61,5 @@ rsc-header {
 }
 rsc-footer {
   display: block;
+  margin-top: auto;
 }
