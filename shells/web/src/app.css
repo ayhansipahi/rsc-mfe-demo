@@ -14,6 +14,12 @@ body {
   }
 }
 
+/* Keep room for a classic scrollbar even when the page fits, so content that grows late (a
+   fragment filling in, a loader) cannot bring one in and shift every centered block sideways. */
+html {
+  scrollbar-gutter: stable;
+}
+
 .root {
   isolation: isolate;
 }
