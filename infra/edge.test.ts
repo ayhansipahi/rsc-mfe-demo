@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { App } from "aws-cdk-lib";
-import { Match, Template } from "aws-cdk-lib/assertions";
+import { Annotations, Match, Template } from "aws-cdk-lib/assertions";
 import type { EdgeStack } from "../shells/web/infra/edge-stack.ts";
 import { buildStage } from "./app.ts";
 import { stages } from "./stages.ts";
@@ -125,4 +125,9 @@ test("the distribution carries the stage tags", () => {
   Template.fromStack(edge).hasResourceProperties("AWS::CloudFront::Distribution", {
     Tags: Match.arrayWith([{ Key: "project", Value: "rsc-mfe" }, { Key: "stage", Value: "staging" }]),
   });
+});
+
+test("the imported-bucket OAC warning is acknowledged: no warnings from the edge stack's own constructs", () => {
+  const warnings = Annotations.fromStack(edge).findWarning("*", Match.anyValue());
+  assert.deepEqual(warnings.filter((w) => String(w.entry.data).includes("imported bucket")), []);
 });

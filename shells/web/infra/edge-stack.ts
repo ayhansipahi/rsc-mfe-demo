@@ -1,4 +1,4 @@
-import { CfnOutput, Duration } from "aws-cdk-lib";
+import { Annotations, CfnOutput, Duration } from "aws-cdk-lib";
 import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as origins from "aws-cdk-lib/aws-cloudfront-origins";
@@ -38,6 +38,10 @@ export class EdgeStack extends StageStack {
     const shell = fn(props.shell);
     const orders = fn(props.orders);
     const store = fn(props.store);
+    Annotations.of(this).acknowledgeWarning(
+      "@aws-cdk/aws-cloudfront-origins:updateImportedBucketPolicyOac",
+      "the explicit CfnBucketPolicy below grants this distribution read access to the bucket",
+    );
     // Name-only reference: the edge stack owns the bucket policy, so OAC must not edit the bucket's own.
     const assets = origins.S3BucketOrigin.withOriginAccessControl(
       s3.Bucket.fromBucketName(this, "Assets", props.bucket.bucketName),
