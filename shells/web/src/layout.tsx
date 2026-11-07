@@ -108,7 +108,12 @@ export function Page({ shell, owner, build, shellOrigin, stitch, email, cartCoun
       </main>
       {!shell && (
         <rsc-footer data-owner="shell">
-          <footer className="px-4 py-3 text-xs text-neutral-500">RSC micro-frontend demo</footer>
+          {/* Same box as fragments/footer.js draws (padding, border, line height), so the page does
+              not grow when the script runs: on a page just shorter than the window that growth
+              brings in a scrollbar and every centered block shifts sideways. */}
+          <footer className="mx-auto max-w-3xl border-t border-neutral-200 p-6 text-xs leading-[1.4] text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
+            RSC micro-frontend demo
+          </footer>
         </rsc-footer>
       )}
     </>

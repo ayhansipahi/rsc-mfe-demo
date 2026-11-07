@@ -12,7 +12,7 @@ const stitch = (owner, color) =>
 
 const style = `
   :host { display: block; }
-  footer { max-width: 48rem; margin: 0 auto; padding: 24px; border-top: 1px solid var(--line);
+  footer { box-sizing: border-box; max-width: 48rem; margin: 0 auto; padding: 24px; border-top: 1px solid var(--line);
     font: 12px/1.4 ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
   :host { --line: #e5e5e5; --muted: #737373; }
   @media (prefers-color-scheme: dark) { :host { --line: #262626; --muted: #a3a3a3; } }
