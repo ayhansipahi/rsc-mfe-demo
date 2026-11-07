@@ -110,13 +110,17 @@ export class BootstrapStack extends Stack {
     new iam.ManagedPolicy(scope, "Boundary", {
       managedPolicyName: `rsc-mfe-boundary-${s}`,
       statements: [
+        // Web functions log to /aws/lambda/web/<function>, the BucketDeployment handler to /aws/lambda/<function>.
         allow(["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"], [
-          `arn:aws:logs:${region}:${account}:log-group:*`,
+          `arn:aws:logs:${region}:${account}:log-group:*${p}-*`,
+          `arn:aws:logs:${region}:${account}:log-group:*${p}-*:*`,
         ]),
         allow(["dynamodb:Query", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem"], [
           stageTables,
         ]),
-        allow(["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"], [userPools]),
+        allow(["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"], [userPools], {
+          StringEquals: ownTag,
+        }),
         allow(["bedrock:InvokeModel"], [
           `arn:aws:bedrock:${region}:${account}:inference-profile/eu.*`,
           "arn:aws:bedrock:eu-*::foundation-model/*",

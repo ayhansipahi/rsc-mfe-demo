@@ -73,9 +73,16 @@ const glob = (pattern: string, value: string) =>
   new RegExp(`^${pattern.split("*").map((p) => p.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`, "i").test(value);
 const matches = (s: Stmt, action: string, arn: string) =>
   actionsOf(s).some((a) => glob(a, action)) && resourcesOf(s).some((r) => glob(r, arn));
-/** True when an unconditional Allow covers the call and no Deny does. */
-const allows = (doc: Doc, action: string, arn: string) =>
-  doc.Statement.some((s) => s.Effect === "Allow" && !s.Condition && matches(s, action, arn)) &&
+/** Only StringEquals on aws:ResourceTag/* is evaluated (against `tags`); any other condition grants nothing. */
+const holds = (condition: any, tags: Record<string, string>) =>
+  !condition ||
+  (Object.keys(condition).every((op) => op === "StringEquals") &&
+    Object.entries(condition.StringEquals).every(
+      ([key, value]) => key.startsWith("aws:ResourceTag/") && tags[key.slice("aws:ResourceTag/".length)] === value,
+    ));
+/** True when an Allow covers the call on a resource with these tags, and no Deny covers it. */
+const allows = (doc: Doc, action: string, arn: string, tags: Record<string, string> = {}) =>
+  doc.Statement.some((s) => s.Effect === "Allow" && holds(s.Condition, tags) && matches(s, action, arn)) &&
   !doc.Statement.some((s) => s.Effect === "Deny" && matches(s, action, arn));
 
 test("the staging pipeline reaches only staging stacks and the staging exec role", () => {
@@ -161,24 +168,35 @@ test("the boundary grants nothing in iam", () => {
 test("the boundary covers what staging roles call, and nothing of prod", () => {
   const doc = policyOf(t, "rsc-mfe-boundary-staging");
   const prefix = (service: string) => `arn:aws:${service}:${region}:${account}`;
-  const allowed: [string, string][] = [
-    ["logs:PutLogEvents", `${prefix("logs")}:log-group:/aws/lambda/rsc-mfe-staging-web:log-stream:x`],
+  const pool = `${prefix("cognito-idp")}:userpool/eu-central-1_abc`;
+  const allowed: [string, string, Record<string, string>?][] = [
+    // Web functions log to /aws/lambda/web/<function>, the BucketDeployment handler to /aws/lambda/<function>.
+    ["logs:CreateLogGroup", `${prefix("logs")}:log-group:/aws/lambda/web/rsc-mfe-staging-web`],
+    ["logs:PutLogEvents", `${prefix("logs")}:log-group:/aws/lambda/web/rsc-mfe-staging-web:log-stream:x`],
+    ["logs:CreateLogStream", `${prefix("logs")}:log-group:/aws/lambda/rsc-mfe-staging-account-CustomCDKBucketDeploy-x:log-stream:y`],
     ["dynamodb:Query", `${prefix("dynamodb")}:table/rsc-mfe-staging-orders`],
     ["dynamodb:UpdateItem", `${prefix("dynamodb")}:table/rsc-mfe-staging-carts`],
-    ["cognito-idp:AdminInitiateAuth", `${prefix("cognito-idp")}:userpool/eu-central-1_abc`],
+    ["cognito-idp:AdminInitiateAuth", pool, { stage: "staging" }],
+    ["cognito-idp:AdminRespondToAuthChallenge", pool, { project: "rsc-mfe", stage: "staging" }],
     ["bedrock:InvokeModel", `${prefix("bedrock")}:inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0`],
     ["bedrock:InvokeModel", "arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"],
     ["s3:GetObject", `arn:aws:s3:::rsc-mfe-cdk-staging-${account}-${region}/abc.zip`],
     ["s3:PutObject", "arn:aws:s3:::rsc-mfe-staging-assets/assets/app.js"],
   ];
-  for (const [action, arn] of allowed) assert.ok(allows(doc, action, arn), `${action} ${arn}`);
-  const denied: [string, string][] = [
+  for (const [action, arn, tags] of allowed) assert.ok(allows(doc, action, arn, tags), `${action} ${arn}`);
+  const denied: [string, string, Record<string, string>?][] = [
     ["dynamodb:Query", `${prefix("dynamodb")}:table/rsc-mfe-prod-orders`],
     ["s3:PutObject", "arn:aws:s3:::rsc-mfe-prod-assets/assets/app.js"],
     ["s3:GetObject", `arn:aws:s3:::rsc-mfe-cdk-prod-${account}-${region}/abc.zip`],
     ["dynamodb:Scan", `${prefix("dynamodb")}:table/rsc-mfe-staging-orders`],
+    ["cognito-idp:AdminInitiateAuth", pool, { project: "rsc-mfe", stage: "prod" }],
+    ["cognito-idp:AdminRespondToAuthChallenge", pool, { stage: "prod" }],
+    ["cognito-idp:AdminInitiateAuth", pool],
+    ["logs:PutLogEvents", `${prefix("logs")}:log-group:/aws/lambda/web/rsc-mfe-prod-web:log-stream:x`],
+    ["logs:CreateLogGroup", `${prefix("logs")}:log-group:/aws/lambda/other-workload`],
+    ["logs:PutLogEvents", `${prefix("logs")}:log-group:/aws/lambda/other-workload:log-stream:x`],
   ];
-  for (const [action, arn] of denied) assert.ok(!allows(doc, action, arn), `${action} ${arn}`);
+  for (const [action, arn, tags] of denied) assert.ok(!allows(doc, action, arn, tags), `${action} ${arn}`);
 });
 
 test("the exec role manages only its stage's names", () => {
