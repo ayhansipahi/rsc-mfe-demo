@@ -6,14 +6,12 @@
    change both sides together. */
 
 :root {
-  --shell-bg: #fff; /* the page background, app.css: bg-white / dark:bg-gray-950 */
   --shell-line: #e5e5e5;
   --shell-muted: #525252;
   --shell-faint: #737373;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --shell-bg: oklch(13% 0.028 261.692);
     --shell-line: #262626;
     --shell-muted: #a3a3a3;
     --shell-faint: #a3a3a3;
@@ -27,9 +25,8 @@ html {
 }
 
 /* A column at least one window tall: on a short page the footer (margin-top: auto) sits at the
-   bottom of the window; on a long one it sticks to the bottom of the window while the content
-   scrolls under it, and rests after the content at the end. svh, not dvh: a mobile URL bar
-   sliding in and out does not move it. */
+   bottom of the window, on a long one after the content. svh, not dvh: a mobile URL bar sliding
+   in and out does not move it. */
 .root {
   display: flex;
   flex-direction: column;
@@ -45,9 +42,6 @@ rsc-header {
 rsc-footer {
   display: block;
   margin-top: auto;
-  position: sticky;
-  bottom: 0;
-  background: var(--shell-bg); /* content scrolls under it */
 }
 
 rsc-header > nav {
