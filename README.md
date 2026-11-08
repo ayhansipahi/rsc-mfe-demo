@@ -130,8 +130,15 @@ JSON
 
 # 4. Bootstrap stack: GitHub OIDC trust, pipeline roles, execution roles, permissions boundaries,
 #    asset buckets. Use CreateOidcProvider=true only if the account has no GitHub OIDC provider yet.
-npm ci
-npx cdk deploy bootstrap-$ACCOUNT --parameters CreateOidcProvider=false
+#    It deploys only if steps 2 and 3 took effect.
+R=repos/ayhansipahi/rsc-mfe-demo
+if gh api $R/environments/staging --jq .deployment_branch_policy.protected_branches | grep -qx true &&
+   gh api $R/environments/prod --jq '.deployment_branch_policy.protected_branches and any(.protection_rules[]; .type == "required_reviewers")' | grep -qx true &&
+   gh api $R/branches/main/protection --jq '.required_status_checks.contexts | index("check") != null' | grep -qx true; then
+  npm ci && npx cdk deploy bootstrap-$ACCOUNT --parameters CreateOidcProvider=false
+else
+  echo "GitHub protections missing: redo steps 2 and 3 before the bootstrap" >&2
+fi
 ```
 
 For a team, also turn on `require_code_owner_reviews`, at least 1 approving review in step 3, and

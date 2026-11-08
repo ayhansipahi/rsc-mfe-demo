@@ -73,10 +73,13 @@ POOL=$(aws cognito-idp list-user-pools --region eu-central-1 --max-results 20 \
 EMAIL=<demo email from App Store Connect>
 aws cognito-idp admin-create-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
   --message-action SUPPRESS --user-attributes Name=email,Value="$EMAIL" Name=email_verified,Value=true
-read -rs PASS  # type the demo password from App Store Connect; it stays out of shell history
+# Type the demo password from App Store Connect. It goes through a private temp file, never the command line
+# or shell history. If `cli_history` is enabled in ~/.aws/config, turn it off first: it records requests.
+read -rs PASS
+F=$(mktemp) && printf '%s' "$PASS" | jq -Rs '{Password: ., Permanent: true}' > "$F"
 aws cognito-idp admin-set-user-password --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
-  --password "$PASS" --permanent
-unset PASS
+  --cli-input-json "file://$F"
+rm -f "$F"; unset PASS
 SUB=$(aws cognito-idp admin-get-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
   --query "UserAttributes[?Name=='sub'].Value | [0]" --output text)
 
