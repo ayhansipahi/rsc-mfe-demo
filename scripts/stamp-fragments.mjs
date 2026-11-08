@@ -6,7 +6,7 @@ import path from "node:path";
 
 export function stamp(srcDir, outDir, value) {
   fs.mkdirSync(outDir, { recursive: true });
-  for (const name of fs.readdirSync(srcDir).filter((n) => n.endsWith(".js"))) {
+  for (const name of fs.readdirSync(srcDir).filter((n) => /\.(js|css)$/.test(n))) {
     const src = fs.readFileSync(path.join(srcDir, name), "utf8");
     fs.writeFileSync(path.join(outDir, name), src.replaceAll("__BUILD__", value));
   }

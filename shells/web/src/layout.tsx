@@ -37,7 +37,6 @@ const pages = [
   ["/store", "Store"],
   ["/orders", "Orders"],
 ] as const;
-const navLink = "rounded-md px-3 py-1.5 text-neutral-600 dark:text-neutral-400";
 
 export interface PageProps {
   /** Inside the native mobile shell (RSCShell/ User-Agent): no web chrome, fragments report to the tab bar. */
@@ -74,46 +73,42 @@ export function Page({ shell, owner, build, shellOrigin, stitch, email, cartCoun
         </>
       ) : (
         <>
+          {/* The page frame and how the header's and footer's server HTML look come from the
+              shell at request time, like the two scripts: a shell deploy changes them without
+              rebuilding an app. Render-blocking on purpose, so nothing moves when it arrives. */}
+          <link rel="stylesheet" href={`${shellOrigin}/shell-static/fragments/chrome.css`} precedence="default" />
           <script type="module" src={`${shellOrigin}/shell-static/fragments/header.js`} async />
           <script type="module" src={`${shellOrigin}/shell-static/fragments/footer.js`} async />
           {/* Every <rsc-*> tag carries server HTML: what a crawler, or a user before the script
               loads, gets instead of the fragment. The fragment's shadow root covers it once JS
               runs (light DOM without a <slot> is not rendered). For the header that is the site
               nav plus what the two nested fragments show, as far as the server knows it (chrome());
-              keep in step with `pages` in fragments/header.js. ponytail: no aria-current
-              server-side, header.js sets it. */}
+              keep in step with `pages` in fragments/header.js. No classes: fragments/chrome.css
+              styles this markup by element. ponytail: no aria-current server-side, header.js sets it. */}
           <rsc-header data-owner="shell">
-            <nav className="flex min-h-[49px] items-center gap-1 border-b border-neutral-200 px-4 py-2 text-sm dark:border-neutral-800">
+            <nav>
               {pages.map(([to, label]) => (
-                <a key={to} href={to} className={navLink}>
+                <a key={to} href={to}>
                   {label}
                 </a>
               ))}
-              <span className="ml-auto flex gap-2">
-                <a href="/store/cart" className={navLink}>
-                  Cart{cartCount != null && <span className="ml-1 font-medium">{cartCount}</span>}
-                </a>
-                {email ? (
-                  <a href="/account" className={navLink}>{email}</a>
-                ) : (
-                  <a href="/login" className={navLink}>Sign in</a>
-                )}
+              <span>
+                <a href="/store/cart">Cart{cartCount != null && <span>{cartCount}</span>}</a>
+                {email ? <a href="/account">{email}</a> : <a href="/login">Sign in</a>}
               </span>
             </nav>
           </rsc-header>
         </>
       )}
-      <main data-owner={owner} data-build={build} className="mx-auto max-w-3xl space-y-4 p-6">
+      {/* w-full: .root is a flex column (fragments/chrome.css), where mx-auto alone would shrink main to its content. */}
+      <main data-owner={owner} data-build={build} className="mx-auto w-full max-w-3xl space-y-4 p-6">
         {children}
       </main>
       {!shell && (
         <rsc-footer data-owner="shell">
-          {/* Same box as fragments/footer.js draws (padding, border, line height), so the page does
-              not grow when the script runs: on a page just shorter than the window that growth
-              brings in a scrollbar and every centered block shifts sideways. */}
-          <footer className="mx-auto max-w-3xl border-t border-neutral-200 p-6 text-xs leading-[1.4] text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
-            RSC micro-frontend demo
-          </footer>
+          {/* Styled by fragments/chrome.css to the box fragments/footer.js draws, so the page does
+              not grow when the script runs. */}
+          <footer>RSC micro-frontend demo</footer>
         </rsc-footer>
       )}
     </>

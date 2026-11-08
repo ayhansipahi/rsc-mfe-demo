@@ -14,12 +14,9 @@ body {
   }
 }
 
-/* Keep room for a classic scrollbar even when the page fits, so content that grows late (a
-   fragment filling in, a loader) cannot bring one in and shift every centered block sideways. */
-html {
-  scrollbar-gutter: stable;
-}
-
+/* The page frame (scrollbar gutter, the column that keeps the footer down) and the header's and
+   footer's server HTML are styled by the shell's fragments/chrome.css, which Page links at
+   request time: a shell deploy changes them without rebuilding an app. */
 .root {
   isolation: isolate;
 }
@@ -46,13 +43,3 @@ html.stitch main[data-owner]::before {
 html.stitch main[data-owner="orders"] { --stitch: #16a34a; }
 html.stitch main[data-owner="store"] { --stitch: #d97706; }
 html.stitch main[data-owner="account"] { --stitch: #dc2626; }
-
-/* The header and footer fill in when their scripts run; reserve the header's height (32px boxes
-   plus 8px padding each side plus the 1px border, as the nav draws) so the page does not jump. */
-rsc-header {
-  display: block;
-  min-height: 49px;
-}
-rsc-footer {
-  display: block;
-}
