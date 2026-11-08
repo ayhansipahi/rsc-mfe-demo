@@ -80,12 +80,17 @@ deploys it. Developers have read-only AWS access and no deploy permission anywhe
 ### How a change reaches prod
 
 1. Open a pull request. The `check` job runs typecheck, tests, `cdk synth`, and a `cdk diff`
-   against staging and prod with a read-only role (fork PRs skip the diff). The diff is posted on the PR.
+   against staging, prod and the bootstrap stack with a read-only role (fork PRs skip the diff). The diff goes
+   to the job summary, not to a PR comment.
 2. Merge to `main` (protected; `check` must pass).
 3. `deploy.yml` builds once, deploys staging, then waits for the required reviewer on the `prod` environment.
 4. After approval the same build is deployed to prod.
 
-Locally you can run `npm run synth` and `npx cdk diff`; there is no deploy script and none is needed.
+Locally you can run `npm run synth` and `npx cdk diff --no-change-set …` (read-only credentials cannot
+create change sets); there is no deploy script and none is needed.
+
+The pipeline does not deploy changes to `infra/bootstrap.ts`: after merging one, an account admin
+redeploys the bootstrap stack (`npx cdk deploy bootstrap-$ACCOUNT`). The PR diff shows the change.
 
 ### Rollback
 
@@ -103,7 +108,8 @@ ACCOUNT=644789169398
 npm ci
 npx cdk deploy bootstrap-$ACCOUNT --parameters CreateOidcProvider=false
 
-# 2. Repository variable the workflows read
+# 2. Repository variable the workflows read (with one account per stage, also set it per environment:
+#    gh variable set AWS_ACCOUNT_ID --env <stage> --body <id>)
 gh variable set AWS_ACCOUNT_ID --body "$ACCOUNT" --repo ayhansipahi/rsc-mfe-demo
 
 # 3. Environments, limited to protected branches (the OIDC trust is per environment, so only
@@ -125,14 +131,33 @@ gh api -X PUT repos/ayhansipahi/rsc-mfe-demo/branches/main/protection --input - 
 JSON
 ```
 
+For a team, also turn on `require_code_owner_reviews`, at least 1 approving review in step 4, and
+`prevent_self_review` on the `prod` environment's protection rules.
+
 Without step 3 and 4 any branch could assume a deploy role, so do not skip them.
 
 To move an existing environment from the old shell scripts, follow
 [`docs/runbooks/2026-11-eu-central-1-migration.md`](docs/runbooks/2026-11-eu-central-1-migration.md).
 
+With one account per stage, set `AWS_ACCOUNT_ID` on each GitHub environment
+(`gh variable set AWS_ACCOUNT_ID --env <stage> --body <id> --repo ayhansipahi/rsc-mfe-demo`); an environment
+variable overrides the repository variable in `deploy-stage.yml`. The PR `cdk diff` job has no environment,
+so it uses the repository-level variable's account only and cannot diff a stage in another account.
+
+### Using this template
+
+Before the first deploy in your own account and repository, change:
+
+- `infra/stages.ts`: each stage's `account`, `githubRepo`, the `mobile` ids and the `domain`.
+- The hard-coded account id, repository and GitHub user in the commands on this page and in the runbook.
+- The bootstrap deploy: use `CreateOidcProvider=true` in an account that has no GitHub OIDC provider yet.
+
 ### Attaching a domain
 
 A stage is reachable on its CloudFront address (the `DistributionUrl` output of the `rsc-mfe-<stage>-edge` stack). The pipeline's smoke test uses that address, so it does not depend on DNS.
+That address serves pages only. Sign-in, sign-up, logout and cart writes need the stage's domain: React
+Router's CSRF check compares the request's Origin with `PUBLIC_HOST`, which is set from the domain, so those
+actions are rejected on the CloudFront address. Attach a domain to every stage that people sign in on.
 To use your own name: request an ACM certificate for it in `us-east-1`, set `domain: { name, certificateArn }`
 on the stage in `infra/stages.ts`, merge through the pipeline, then point a CNAME for the name at the
 `DistributionUrl` host (the distribution's `*.cloudfront.net` name).
@@ -148,6 +173,7 @@ stacks and cannot import existing resources into a stack. Known gaps:
   scoped by name, so the execution role can change any of them in the account. Through the pipeline it
   only reaches the ones its own stacks create.
 - Stage roles may invoke any EU Bedrock model in the account (cost exposure, nothing else).
+- The execution role has `dynamodb:DescribeTable` on `*` (table metadata only).
 - The execution role can read any ACM certificate's metadata in `us-east-1` and list certificates; read-only.
 - A stack can publish Lambda layer versions under any name in the region.
 - Stages can write to their own buckets' policies and public access block.

@@ -20,18 +20,39 @@ aws cloudformation describe-stacks --region eu-central-1 --stack-name rsc-mfe-pr
 
 ## 3. Cutover (a few minutes of downtime)
 
-1. Remove the `rscmfe.sph.sh` alias from the old distribution `E38EEA6HS61O94` (console, or
-   `aws cloudfront get-distribution-config` / `update-distribution` with the alias removed).
-2. In a PR, set prod's domain in `infra/stages.ts`:
+Prerequisite: a domain is attached to staging and sign-in is verified on it (sign-in, sign-up, logout and
+cart writes need the stage's domain, see "Attaching a domain" in the README). Do not cut prod over before that.
+
+Users and passkeys do not carry over: the new pool is empty, so users register again, and iOS passkeys bound
+to the old pool fail.
+
+1. In a PR, set prod's domain in `infra/stages.ts`:
    ```ts
    domain: {
      name: "rscmfe.sph.sh",
      certificateArn: "arn:aws:acm:us-east-1:644789169398:certificate/2ce976c9-3236-4a77-bd0a-bcf27799271c",
    },
    ```
-   Merge, approve the prod deploy.
-3. The owner points the `rscmfe.sph.sh` CNAME at the new distribution's domain name
+   Merge it. Staging deploys, then the prod job waits for approval. Do not approve yet.
+2. While the prod job waits, remove the `rscmfe.sph.sh` alias from the old distribution `E38EEA6HS61O94`
+   (console, or `aws cloudfront get-distribution-config` / `update-distribution` with the alias removed) and wait:
+   ```bash
+   aws cloudfront wait distribution-deployed --id E38EEA6HS61O94
+   ```
+3. Approve the prod deploy. It attaches the alias to the new distribution.
+4. The owner points the `rscmfe.sph.sh` CNAME at the new distribution's domain name
    (the `DistributionUrl` host from step 2; it stays the same after the alias is attached).
+
+### Rollback
+
+1. Remove the alias from the new distribution: revert the domain PR and let the pipeline deploy it (or edit the
+   distribution's alias by hand and let the next deploy reconcile it).
+2. Add the `rscmfe.sph.sh` alias back to the old distribution `E38EEA6HS61O94` and wait for
+   `aws cloudfront wait distribution-deployed --id E38EEA6HS61O94`.
+3. Point the CNAME back at the old distribution.
+
+Keep the old distribution until the old CNAME's TTL has expired everywhere and the new site is verified;
+only then go on to section 5.
 
 ## 4. Demo user and orders
 
@@ -66,7 +87,7 @@ seed loop with that user's `sub`.
 ## 5. Smoke test, then delete the old resources
 
 Sign in as the demo user on `https://rscmfe.sph.sh` (and on the iOS app), check orders and cart.
-Only then delete, all in `eu-north-1` (`R=eu-north-1`). Deletion is permanent.
+Wait out the old CNAME's TTL first. Only then delete, all in `eu-north-1` (`R=eu-north-1`). Deletion is permanent.
 
 ```bash
 R=eu-north-1
