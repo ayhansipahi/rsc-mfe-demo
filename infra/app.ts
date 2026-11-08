@@ -8,7 +8,7 @@ import { AssetsStack } from "../shells/web/infra/assets-stack.ts";
 import { EdgeStack } from "../shells/web/infra/edge-stack.ts";
 import { ShellStack } from "../shells/web/infra/shell-stack.ts";
 import { BootstrapStack } from "./bootstrap.ts";
-import { githubRepo, stages } from "./stages.ts";
+import { githubSubject, stages } from "./stages.ts";
 import type { StageConfig } from "./stages.ts";
 
 export function buildStage(app: App, stage: StageConfig) {
@@ -42,7 +42,7 @@ if (import.meta.main) {
       env: { account, region: accountStages[0].region },
       synthesizer: new BootstraplessSynthesizer(),
       stages: accountStages,
-      repo: githubRepo,
+      subject: githubSubject,
     });
   }
   app.synth();

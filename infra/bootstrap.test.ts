@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { App, BootstraplessSynthesizer } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { BootstrapStack } from "./bootstrap.ts";
-import { githubRepo, stages } from "./stages.ts";
+import { githubSubject, stages } from "./stages.ts";
 
 const account = "644789169398";
 const region = "eu-central-1";
@@ -13,7 +13,7 @@ const t = Template.fromStack(
     env: { account, region },
     synthesizer: new BootstraplessSynthesizer(),
     stages,
-    repo: githubRepo,
+    subject: githubSubject,
   }),
 );
 
@@ -109,9 +109,9 @@ test("pipeline roles cannot import existing resources into their stacks", () => 
 });
 
 test("pipeline roles trust one environment each", () => {
-  assert.equal(trustSub(t, "rsc-mfe-gh-staging"), "repo:ayhansipahi/rsc-mfe-demo:environment:staging");
-  assert.equal(trustSub(t, "rsc-mfe-gh-prod"), "repo:ayhansipahi/rsc-mfe-demo:environment:prod");
-  assert.equal(trustSub(t, "rsc-mfe-gh-diff"), "repo:ayhansipahi/rsc-mfe-demo:pull_request");
+  assert.equal(trustSub(t, "rsc-mfe-gh-staging"), "repo:ayhansipahi@721142/rsc-mfe-demo@1445500800:environment:staging");
+  assert.equal(trustSub(t, "rsc-mfe-gh-prod"), "repo:ayhansipahi@721142/rsc-mfe-demo@1445500800:environment:prod");
+  assert.equal(trustSub(t, "rsc-mfe-gh-diff"), "repo:ayhansipahi@721142/rsc-mfe-demo@1445500800:pull_request");
   for (const name of ["rsc-mfe-gh-staging", "rsc-mfe-gh-prod", "rsc-mfe-gh-diff"]) {
     const trust = trustOf(t, name);
     assert.equal(trust.Action, "sts:AssumeRoleWithWebIdentity");

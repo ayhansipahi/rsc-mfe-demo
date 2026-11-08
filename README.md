@@ -158,7 +158,7 @@ so it uses the repository-level variable's account only and cannot diff a stage 
 
 Before the first deploy in your own account and repository, change:
 
-- `infra/stages.ts`: each stage's `account`, `githubRepo`, the `mobile` ids and the `domain`.
+- `infra/stages.ts`: each stage's `account`, `githubSubject` (the command is in its comment), the `mobile` ids and the `domain`.
 - The hard-coded account id, repository and GitHub user in the commands on this page and in the runbook.
 - The bootstrap deploy: use `CreateOidcProvider=true` in an account that has no GitHub OIDC provider yet.
 

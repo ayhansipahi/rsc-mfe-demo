@@ -8,7 +8,10 @@ export interface StageConfig {
   mobile?: { appleAppIds: string; androidPackage: string; androidCertSha256: string };
 }
 
-export const githubRepo = "ayhansipahi/rsc-mfe-demo";
+// The `sub` claim prefix of this repository's GitHub OIDC tokens; the deploy roles trust only it. Read yours with
+// `gh api repos/<owner>/<repo>/actions/oidc/customization/sub --jq .sub_claim_prefix`. GitHub's immutable
+// subject format adds owner and repository ids, so a renamed or re-created repository does not match.
+export const githubSubject = "repo:ayhansipahi@721142/rsc-mfe-demo@1445500800";
 
 export const stages: StageConfig[] = [
   { name: "staging", account: "644789169398", region: "eu-central-1" },

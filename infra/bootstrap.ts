@@ -15,7 +15,7 @@ const allow = (actions: string[], resources: string[], conditions?: Conditions) 
 export interface BootstrapProps extends StackProps {
   stages: StageConfig[];
   /** GitHub `owner/name` whose workflows may assume the pipeline roles. */
-  repo: string;
+  subject: string;
 }
 
 /**
@@ -47,7 +47,7 @@ export class BootstrapStack extends Stack {
     );
     const github = (sub: string) =>
       new iam.WebIdentityPrincipal(providerArn, {
-        StringEquals: { [`${oidcHost}:aud`]: "sts.amazonaws.com", [`${oidcHost}:sub`]: `repo:${props.repo}:${sub}` },
+        StringEquals: { [`${oidcHost}:aud`]: "sts.amazonaws.com", [`${oidcHost}:sub`]: `${props.subject}:${sub}` },
       });
 
     // `cdk diff --no-change-set` on pull requests.
