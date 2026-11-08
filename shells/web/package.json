@@ -16,7 +16,7 @@
     "build": "node ../../scripts/stamp-fragments.mjs",
     "dev": "npm run build && PORT=4000 node index.js",
     "start": "node index.js",
-    "test": "node --test src"
+    "test": "node --test 'src/**/*.test.*'"
   },
   "dependencies": {
     "@hono/node-server": "2.1.6",

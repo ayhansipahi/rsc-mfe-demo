@@ -7,7 +7,7 @@
   "scripts": {
     "postinstall": "node scripts/patch-react-router.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p infra",
-    "test": "npm test --workspaces --if-present && node --test scripts/ 'infra/**/*.test.ts' '*/*/infra/*.test.ts'",
+    "test": "npm test --workspaces --if-present && node --test 'scripts/*.test.mjs' 'infra/**/*.test.ts' '*/*/infra/*.test.ts'",
     "synth": "cdk synth --quiet"
   },
   "devDependencies": {

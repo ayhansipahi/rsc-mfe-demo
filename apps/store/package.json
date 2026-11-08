@@ -8,7 +8,7 @@
     "dev": "react-router dev",
     "start": "node index.js",
     "typecheck": "react-router typegen && tsc",
-    "test": "node --test app"
+    "test": "node --test 'app/**/*.test.ts'"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "3.1163.0",
