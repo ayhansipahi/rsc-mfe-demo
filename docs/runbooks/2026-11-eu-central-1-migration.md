@@ -5,8 +5,8 @@ Old resources live in `eu-north-1`; new ones in `eu-central-1`.
 
 ## 1. Bootstrap and GitHub settings
 
-Follow "One-time setup" in the README: bootstrap stack (`CreateOidcProvider=false`, this account has the
-provider), `AWS_ACCOUNT_ID`, the `staging` and `prod` environments, branch protection on `main`.
+Follow "One-time setup" in the README, in its order: `AWS_ACCOUNT_ID`, the `staging` and `prod` environments,
+branch protection on `main`, then the bootstrap stack (`CreateOidcProvider=false`, this account has the provider).
 
 ## 2. Build staging and prod
 
@@ -45,8 +45,15 @@ to the old pool fail.
 
 ### Rollback
 
-1. Remove the alias from the new distribution: revert the domain PR and let the pipeline deploy it (or edit the
-   distribution's alias by hand and let the next deploy reconcile it).
+1. Remove the alias from the new distribution: revert the domain PR and let the pipeline deploy it. In an
+   emergency you may remove the alias by hand first, but merge the revert anyway: CloudFormation does not undo
+   a manual edit, and the next edge deploy would try to take the alias back. Wait until the new distribution
+   is deployed before going on:
+   ```bash
+   NEW=$(aws cloudformation describe-stack-resources --region eu-central-1 --stack-name rsc-mfe-prod-edge \
+     --query "StackResources[?ResourceType=='AWS::CloudFront::Distribution'].PhysicalResourceId | [0]" --output text)
+   aws cloudfront wait distribution-deployed --id "$NEW"
+   ```
 2. Add the `rscmfe.sph.sh` alias back to the old distribution `E38EEA6HS61O94` and wait for
    `aws cloudfront wait distribution-deployed --id E38EEA6HS61O94`.
 3. Point the CNAME back at the old distribution.
@@ -66,8 +73,10 @@ POOL=$(aws cognito-idp list-user-pools --region eu-central-1 --max-results 20 \
 EMAIL=<demo email from App Store Connect>
 aws cognito-idp admin-create-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
   --message-action SUPPRESS --user-attributes Name=email,Value="$EMAIL" Name=email_verified,Value=true
+read -rs PASS  # type the demo password from App Store Connect; it stays out of shell history
 aws cognito-idp admin-set-user-password --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
-  --password '<demo password from App Store Connect>' --permanent
+  --password "$PASS" --permanent
+unset PASS
 SUB=$(aws cognito-idp admin-get-user --region eu-central-1 --user-pool-id "$POOL" --username "$EMAIL" \
   --query "UserAttributes[?Name=='sub'].Value | [0]" --output text)
 

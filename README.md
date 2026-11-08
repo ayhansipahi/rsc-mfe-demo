@@ -94,25 +94,23 @@ redeploys the bootstrap stack (`npx cdk deploy bootstrap-$ACCOUNT`). The PR diff
 
 ### Rollback
 
-Revert the commit and merge the revert; the pipeline deploys the previous state. A deploy that fails
-is rolled back by CloudFormation on its own.
+Revert the commit and merge the revert; the pipeline deploys the previous state. When a deploy fails,
+CloudFormation rolls back only the stack that failed: stacks deployed before it keep the new version, and a
+failed smoke test rolls back nothing. Check the stage, then revert or redeploy it.
 
 ### One-time setup (account admin)
 
-Run once per account, in this order, with admin credentials.
+Run once per account, in this order, with admin credentials. The GitHub side comes first: a workflow that
+names a missing environment creates it without protection, so the deploy roles must not exist before the
+environments do.
 
 ```bash
-# 1. Bootstrap stack: GitHub OIDC trust, pipeline roles, execution roles, permissions boundaries,
-#    asset buckets. Use CreateOidcProvider=true only if the account has no GitHub OIDC provider yet.
-ACCOUNT=644789169398
-npm ci
-npx cdk deploy bootstrap-$ACCOUNT --parameters CreateOidcProvider=false
-
-# 2. Repository variable the workflows read (with one account per stage, also set it per environment:
+# 1. Repository variable the workflows read (with one account per stage, also set it per environment:
 #    gh variable set AWS_ACCOUNT_ID --env <stage> --body <id>)
+ACCOUNT=644789169398
 gh variable set AWS_ACCOUNT_ID --body "$ACCOUNT" --repo ayhansipahi/rsc-mfe-demo
 
-# 3. Environments, limited to protected branches (the OIDC trust is per environment, so only
+# 2. Environments, limited to protected branches (the OIDC trust is per environment, so only
 #    protected branches may reach the deploy roles)
 gh api -X PUT repos/ayhansipahi/rsc-mfe-demo/environments/staging \
   --input - <<<'{"deployment_branch_policy":{"protected_branches":true,"custom_branch_policies":false}}'
@@ -122,19 +120,24 @@ gh api -X PUT repos/ayhansipahi/rsc-mfe-demo/environments/prod \
  "reviewers":[{"type":"User","id":$(gh api users/ayhansipahi --jq .id)}]}
 JSON
 
-# 4. Protect main, with the CI check required
+# 3. Protect main, with the CI check required
 gh api -X PUT repos/ayhansipahi/rsc-mfe-demo/branches/main/protection --input - <<'JSON'
 {"required_status_checks":{"strict":true,"contexts":["check"]},
  "enforce_admins":true,
  "required_pull_request_reviews":{"required_approving_review_count":0},
  "restrictions":null}
 JSON
+
+# 4. Bootstrap stack: GitHub OIDC trust, pipeline roles, execution roles, permissions boundaries,
+#    asset buckets. Use CreateOidcProvider=true only if the account has no GitHub OIDC provider yet.
+npm ci
+npx cdk deploy bootstrap-$ACCOUNT --parameters CreateOidcProvider=false
 ```
 
-For a team, also turn on `require_code_owner_reviews`, at least 1 approving review in step 4, and
+For a team, also turn on `require_code_owner_reviews`, at least 1 approving review in step 3, and
 `prevent_self_review` on the `prod` environment's protection rules.
 
-Without step 3 and 4 any branch could assume a deploy role, so do not skip them.
+Without steps 2 and 3 any branch could assume a deploy role, so do not skip them.
 
 To move an existing environment from the old shell scripts, follow
 [`docs/runbooks/2026-11-eu-central-1-migration.md`](docs/runbooks/2026-11-eu-central-1-migration.md).
@@ -172,6 +175,10 @@ stacks and cannot import existing resources into a stack. Known gaps:
 - CloudFront cache policies, origin access controls and origin request policies cannot be tagged or
   scoped by name, so the execution role can change any of them in the account. Through the pipeline it
   only reaches the ones its own stacks create.
+- User pools and distributions are scoped by the `stage` tag, and creating one must tag it, so the
+  execution role may add its tag to an existing pool (in `eu-central-1`) or distribution (any in the account)
+  that has no `stage` tag, and then manage it. Only CloudFormation can use the role and stacks cannot import
+  resources, so no stack reaches one directly; other workloads' distributions usually have no `stage` tag.
 - Stage roles may invoke any EU Bedrock model in the account (cost exposure, nothing else).
 - The execution role has `dynamodb:DescribeTable` on `*` (table metadata only).
 - The execution role can read any ACM certificate's metadata in `us-east-1` and list certificates; read-only.

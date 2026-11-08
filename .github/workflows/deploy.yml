@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   synth:
@@ -16,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 24
@@ -33,12 +34,18 @@ jobs:
 
   staging:
     needs: synth
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/deploy-stage.yml
     with:
       stage: staging
 
   prod:
     needs: staging
+    permissions:
+      contents: read
+      id-token: write
     uses: ./.github/workflows/deploy-stage.yml
     with:
       stage: prod
