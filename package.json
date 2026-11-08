@@ -2,8 +2,17 @@
   "name": "rsc-mfe-demo",
   "private": true,
   "type": "module",
+  "engines": { "node": ">=24.2" },
   "workspaces": ["shells/web", "apps/*", "services/orders", "services/cart"],
   "scripts": {
-    "postinstall": "node scripts/patch-react-router.mjs"
+    "postinstall": "node scripts/patch-react-router.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc -p infra",
+    "test": "npm test --workspaces --if-present && node --test 'scripts/*.test.mjs' 'infra/**/*.test.ts' '*/*/infra/*.test.ts'",
+    "synth": "cdk synth --quiet"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.1148.0",
+    "aws-cdk-lib": "2.275.0",
+    "constructs": "10.8.1"
   }
 }

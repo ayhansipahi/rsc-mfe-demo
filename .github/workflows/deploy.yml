@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synth:
+    # workflow_dispatch can target any ref; deploy from main only (skips staging and prod too)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx cdk synth --quiet
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: cdk-out
+          path: cdk.out
+          if-no-files-found: error
+          retention-days: 14
+          include-hidden-files: true
+
+  staging:
+    needs: synth
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-stage.yml
+    with:
+      stage: staging
+
+  prod:
+    needs: staging
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-stage.yml
+    with:
+      stage: prod
