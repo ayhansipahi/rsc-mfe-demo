@@ -209,6 +209,8 @@ test("the exec role manages only its stage's names", () => {
     ["dynamodb:CreateTable", `${prefix("dynamodb")}:table/rsc-mfe-staging-orders`],
     ["s3:PutBucketPolicy", "arn:aws:s3:::rsc-mfe-staging-assets"],
     ["s3:GetObject", `arn:aws:s3:::rsc-mfe-cdk-staging-${account}-${region}/abc.zip`],
+    // CreateWebFunctionRevision checks the caller can read the code object, versions included.
+    ["s3:GetObjectVersion", `arn:aws:s3:::rsc-mfe-cdk-staging-${account}-${region}/abc.zip`],
     ["iam:PassRole", `arn:aws:iam::${account}:role/rsc-mfe-staging-account-WebRole-x`],
   ];
   for (const [action, arn] of allowed) assert.ok(allows(doc, action, arn), `${action} ${arn}`);
@@ -299,6 +301,25 @@ test("CDK asset buckets are private, TLS-only, retained and expire replaced obje
     },
     stages.length,
   );
+  // Lambda reads web function code from the CDK bucket as its service principal, only for its stage's revisions.
+  for (const stage of stages)
+    t.hasResourceProperties("AWS::S3::BucketPolicy", {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Effect: "Allow",
+            Principal: { Service: "lambda.amazonaws.com" },
+            Action: ["s3:GetObject", "s3:GetObjectVersion"],
+            Resource: `arn:aws:s3:::rsc-mfe-cdk-${stage.name}-${account}-${region}/*`,
+            Condition: {
+              ArnLike: {
+                "aws:SourceArn": `arn:aws:lambda:${region}:${account}:web-function/rsc-mfe-${stage.name}-*/revision/*`,
+              },
+            },
+          }),
+        ]),
+      }),
+    });
 });
 
 test("policies fit IAM's size limits", () => {
