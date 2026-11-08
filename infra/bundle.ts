@@ -22,7 +22,7 @@ export function sourceInputs(pkgDir: string): string[] {
   return [pkgDir, ...deps, "package-lock.json", "scripts"];
 }
 
-/** Hash of the sources, never of build output (builds stamp the time into build/fragments). */
+/** Hash of the sources, never of build output (builds stamp BUILD_ID or the time into build/fragments). */
 export function sourceHash(pkgDir: string): string {
   const hash = createHash("sha256");
   for (const input of sourceInputs(pkgDir)) {
@@ -37,8 +37,11 @@ export function sourceHash(pkgDir: string): string {
 
 /** Build one workspace and give it its own production node_modules, as a Lambda Web Function expects. */
 export function bundlePackage(pkgDir: string, outDir: string): void {
-  const run = (cmd: string, args: string[], cwd: string) => execFileSync(cmd, args, { cwd, stdio: "inherit" });
-  run("npm", ["run", "build", "-w", pkgDir], root);
+  const run = (cmd: string, args: string[], cwd: string, env?: NodeJS.ProcessEnv) =>
+    execFileSync(cmd, args, { cwd, stdio: "inherit", env: { ...process.env, ...env } });
+  // The build stamp (client file names, fragments) comes from the sources, so equal sources give equal
+  // output and the code asset (keyed by the same hash) and the uploaded client files cannot drift apart.
+  run("npm", ["run", "build", "-w", pkgDir], root, { BUILD_ID: sourceHash(pkgDir).slice(0, 12) });
 
   const skipped = new Set(["node_modules", ".react-router", "infra"]);
   fs.cpSync(path.join(root, pkgDir), outDir, {

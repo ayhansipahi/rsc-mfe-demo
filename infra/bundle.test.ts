@@ -31,3 +31,17 @@ test("an app bundle carries its own production node_modules with the shell copie
   assert.ok(!fs.existsSync(path.join(out, "node_modules/aws-cdk-lib")));
   assert.ok(!fs.existsSync(path.join(out, "infra")));
 });
+
+function listAssets(dir: string): string[] {
+  return fs.readdirSync(path.join(dir, "build/client/assets")).sort();
+}
+
+test("two bundles of the same sources have identical client asset names", (t) => {
+  const outs = [0, 1].map(() => fs.mkdtempSync(path.join(os.tmpdir(), "bundle-")));
+  t.after(() => outs.forEach((o) => fs.rmSync(o, { recursive: true, force: true })));
+  bundlePackage("apps/orders", outs[0]);
+  bundlePackage("apps/orders", outs[1]);
+  const [a, b] = outs.map(listAssets);
+  assert.ok(a.length > 0);
+  assert.deepEqual(a, b);
+});

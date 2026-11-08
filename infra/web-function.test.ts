@@ -6,6 +6,7 @@ import { test } from "node:test";
 import type { TestContext } from "node:test";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { StageStack } from "./stage-stack.ts";
 import { stages } from "./stages.ts";
@@ -62,6 +63,19 @@ test("the execution role trusts Lambda, has basic logging and no fixed name", ()
   t.hasResourceProperties("AWS::Lambda::WebFunctionRevision", {
     ServiceConfig: Match.objectLike({ EnvironmentVariables: Match.absent() }),
   });
+});
+
+test("the revision waits for the role's policy when a grant exists", () => {
+  const app = new App({ context: { "aws:cdk:bundling-stacks": [] } });
+  const stack = new StageStack(app, "orders-api", staging);
+  const fn = new WebFunction(stack, "Fn", { functionName: "rsc-mfe-staging-orders-api", packageDir });
+  fn.role.addToPolicy(new iam.PolicyStatement({ actions: ["s3:GetObject"], resources: ["*"] }));
+  const t = Template.fromStack(stack);
+  const [policyId] = Object.keys(t.findResources("AWS::IAM::Policy"));
+  const [roleId] = Object.keys(t.findResources("AWS::IAM::Role"));
+  const revision = Object.values(t.findResources("AWS::Lambda::WebFunctionRevision"))[0] as { DependsOn: string[] };
+  assert.ok(revision.DependsOn.includes(policyId));
+  assert.ok(revision.DependsOn.includes(roleId));
 });
 
 function assetsFixture(t: TestContext) {

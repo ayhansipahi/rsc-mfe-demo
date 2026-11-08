@@ -64,7 +64,9 @@ export class WebFunction extends Construct {
         environmentVariables: Object.keys(environment).length > 0 ? environment : undefined,
       },
     });
-    revision.addDependency(fn);
+    revision.addResourceDependency(fn);
+    // The role's inline policy (a DefaultPolicy child) must exist before code that relies on a new grant goes live.
+    revision.node.addDependency(this.role);
 
     const endpoint = new lambda.CfnWebFunctionEndpoint(this, "Endpoint", {
       functionName,
@@ -73,7 +75,7 @@ export class WebFunction extends Construct {
       authType: "ApplicationManaged",
       revisionWeights: [{ revisionId: revision.attrRevisionId, weight: 100 }],
     });
-    endpoint.addDependency(fn);
+    endpoint.addResourceDependency(fn);
 
     this.domainName = endpoint.attrDomainName;
     this.url = `https://${this.domainName}`;

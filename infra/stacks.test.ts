@@ -72,6 +72,12 @@ test("each function holds only its own grants, on its own resources", () => {
   assert.equal(countPolicies(ordersWeb) + countPolicies(shell), 0);
 });
 
+test("the assets bucket name is unique per account and region, inside the stage prefix", () => {
+  Template.fromStack(assets).hasResourceProperties("AWS::S3::Bucket", {
+    BucketName: `rsc-mfe-staging-assets-${staging.account}-${staging.region}`,
+  });
+});
+
 test("stateful resources are retained", () => {
   for (const [stack, type] of [
     [account, "AWS::Cognito::UserPool"],

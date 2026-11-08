@@ -5,14 +5,14 @@ import { StageStack } from "../../../infra/stage-stack.ts";
 import { prefix } from "../../../infra/stages.ts";
 import type { StageConfig } from "../../../infra/stages.ts";
 
-/** Hashed client assets of every revision, never pruned. The edge stack owns the only bucket policy. */
+/** Hashed client assets of every revision, never pruned. Bucket names are global, hence account and region in the name. The edge stack owns the only bucket policy. */
 export class AssetsStack extends StageStack {
   readonly bucket: s3.Bucket;
 
   constructor(scope: Construct, stage: StageConfig) {
     super(scope, "assets", stage);
     this.bucket = new s3.Bucket(this, "Bucket", {
-      bucketName: `${prefix(stage)}-assets`,
+      bucketName: `${prefix(stage)}-assets-${stage.account}-${stage.region}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: false,

@@ -44,11 +44,11 @@ export interface PageProps {
   shell: boolean;
   /** The team whose app renders main: "account" | "orders" | "store". */
   owner: string;
-  /** The app's build time (Vite define __BUILD__). */
+  /** The app build stamp (Vite define __BUILD__: the source hash prefix when built by CDK, else the build minute). */
   build: string;
   /** Where header.js and footer.js are fetched from; "" in production (same host). */
   shellOrigin: string;
-  /** ?stitch: outline every area with its owner and build time. */
+  /** ?stitch: outline every area with its owner and build stamp. */
   stitch: boolean;
   /** Server HTML for the header's fragments, from chrome(request); omitted, the links are bare. */
   email?: string | null;

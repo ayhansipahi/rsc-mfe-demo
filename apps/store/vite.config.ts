@@ -8,7 +8,7 @@ import { defineConfig } from "vite";
 // alone on its own port, so it serves from /.
 export default defineConfig(({ command }) => ({
   base: command === "build" ? "/store-static/" : "/",
-  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16) + "Z") },
+  define: { __BUILD__: JSON.stringify(process.env.BUILD_ID ?? new Date().toISOString().slice(0, 16) + "Z") },
   plugins: [tailwindcss(), reactRouterRSC(), rsc()],
   // The shell package is TypeScript source: bundle it rather than loading it at runtime.
   ssr: { noExternal: ["@rsc-mfe/shell"] },
