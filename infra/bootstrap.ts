@@ -85,7 +85,7 @@ export class BootstrapStack extends Stack {
     const scope = new Construct(this, s);
 
     const cdkBucketName = `rsc-mfe-cdk-${s}-${account}-${region}`;
-    new s3.Bucket(scope, "CdkAssets", {
+    const cdkBucket = new s3.Bucket(scope, "CdkAssets", {
       bucketName: cdkBucketName,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       enforceSSL: true,
@@ -96,6 +96,15 @@ export class BootstrapStack extends Stack {
     });
     const cdkBucketArn = `arn:aws:s3:::${cdkBucketName}`;
     const cdkObjects = `${cdkBucketArn}/*`;
+    // Lambda reads a web function revision's code as its service principal; only this stage's revisions.
+    cdkBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        principals: [new iam.ServicePrincipal("lambda.amazonaws.com")],
+        actions: ["s3:GetObject", "s3:GetObjectVersion"],
+        resources: [cdkObjects],
+        conditions: { ArnLike: { "aws:SourceArn": `arn:aws:lambda:${region}:${account}:web-function/${p}-*/revision/*` } },
+      }),
+    );
     const stageBuckets = [`arn:aws:s3:::${p}-*`, `arn:aws:s3:::${p}-*/*`];
     const stageTables = `arn:aws:dynamodb:${region}:${account}:table/${p}-*`;
     const stageRoles = `arn:aws:iam::${account}:role/${p}-*`;
@@ -149,7 +158,8 @@ export class BootstrapStack extends Stack {
             allow(["dynamodb:*"], [stageTables]),
             allow(["dynamodb:DescribeTable", "dynamodb:ListTables"], ["*"]),
             allow(["s3:*"], stageBuckets),
-            allow(["s3:GetObject"], [cdkObjects]),
+            // CreateWebFunctionRevision checks the caller can read the code object, versions included.
+            allow(["s3:GetObject", "s3:GetObjectVersion"], [cdkObjects]),
             // User pool ids are generated, so pools are scoped by tag. CreateUserPool takes no resource.
             allow(["cognito-idp:CreateUserPool", "cognito-idp:TagResource"], ["*"], {
               StringEquals: requestTags,
