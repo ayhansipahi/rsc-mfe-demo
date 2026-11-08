@@ -134,7 +134,7 @@ JSON
 R=repos/ayhansipahi/rsc-mfe-demo
 if gh api $R/environments/staging --jq .deployment_branch_policy.protected_branches | grep -qx true &&
    gh api $R/environments/prod --jq '.deployment_branch_policy.protected_branches and any(.protection_rules[]; .type == "required_reviewers")' | grep -qx true &&
-   gh api $R/branches/main/protection --jq '.required_status_checks.contexts | index("check") != null' | grep -qx true; then
+   gh api $R/branches/main/protection --jq '.enforce_admins.enabled and (.required_status_checks.contexts | index("check") != null)' | grep -qx true; then
   npm ci && npx cdk deploy bootstrap-$ACCOUNT --parameters CreateOidcProvider=false
 else
   echo "GitHub protections missing: redo steps 2 and 3 before the bootstrap" >&2
