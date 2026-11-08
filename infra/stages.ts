@@ -19,6 +19,10 @@ export const stages: StageConfig[] = [
     name: "prod",
     account: "644789169398",
     region: "eu-central-1",
+    domain: {
+      name: "rscmfe.sph.sh",
+      certificateArn: "arn:aws:acm:us-east-1:644789169398:certificate/2ce976c9-3236-4a77-bd0a-bcf27799271c",
+    },
     mobile: {
       appleAppIds: "3EWL9B9GPV.sh.sph.rscmfe,H8N47UY3F8.sh.sph.rscmfe",
       androidPackage: "sh.sph.rscmfe",
