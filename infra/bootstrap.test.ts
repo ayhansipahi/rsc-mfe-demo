@@ -182,6 +182,8 @@ test("the boundary covers what staging roles call, and nothing of prod", () => {
     ["bedrock:InvokeModel", "arn:aws:bedrock:eu-west-1::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0"],
     ["s3:GetObject", `arn:aws:s3:::rsc-mfe-cdk-staging-${account}-${region}/abc.zip`],
     ["s3:PutObject", "arn:aws:s3:::rsc-mfe-staging-assets/assets/app.js"],
+    // An app calls its team's IAM-only service endpoint.
+    ["lambda:InvokeWebFunctionEndpoint", `${prefix("lambda")}:web-function/rsc-mfe-staging-cart-api/endpoint/live`],
   ];
   for (const [action, arn, tags] of allowed) assert.ok(allows(doc, action, arn, tags), `${action} ${arn}`);
   const denied: [string, string, Record<string, string>?][] = [
@@ -195,6 +197,8 @@ test("the boundary covers what staging roles call, and nothing of prod", () => {
     ["logs:PutLogEvents", `${prefix("logs")}:log-group:/aws/lambda/web/rsc-mfe-prod-web:log-stream:x`],
     ["logs:CreateLogGroup", `${prefix("logs")}:log-group:/aws/lambda/other-workload`],
     ["logs:PutLogEvents", `${prefix("logs")}:log-group:/aws/lambda/other-workload:log-stream:x`],
+    ["lambda:InvokeWebFunctionEndpoint", `${prefix("lambda")}:web-function/rsc-mfe-prod-cart-api/endpoint/live`],
+    ["lambda:InvokeWebFunctionEndpoint", `${prefix("lambda")}:web-function/other-workload/endpoint/live`],
   ];
   for (const [action, arn, tags] of denied) assert.ok(!allows(doc, action, arn, tags), `${action} ${arn}`);
 });
