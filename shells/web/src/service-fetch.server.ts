@@ -57,7 +57,10 @@ export async function serviceFetch(
       headers: { host: target.host, ...headers },
     });
     const r = await fetch(url, { ...init, method, headers: signed.headers });
-    if (!r.ok) fail({ status: r.status, body: (await r.clone().text()).slice(0, 300) });
+    if (!r.ok) {
+      const body = await r.clone().text().catch((e) => `<unreadable: ${e}>`);
+      fail({ status: r.status, body: body.slice(0, 300) });
+    }
     return r;
   } catch (e) {
     fail({ error: String(e), cause: String((e as Error).cause ?? "") });
