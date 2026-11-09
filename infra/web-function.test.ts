@@ -45,6 +45,18 @@ test("a web function has one revision at 100% on a live endpoint", () => {
   assert.match(stack.resolve(fn.url)["Fn::Join"][1][0], /^https:\/\//);
 });
 
+test("authType defaults to ApplicationManaged and IamAuth is opt-in, with the endpoint ARN exposed", () => {
+  const app = new App({ context: { "aws:cdk:bundling-stacks": [] } });
+  const stack = new StageStack(app, "orders-api", staging);
+  const open = new WebFunction(stack, "Open", { functionName: "rsc-mfe-staging-open", packageDir });
+  const closed = new WebFunction(stack, "Closed", { functionName: "rsc-mfe-staging-closed", packageDir, authType: "IamAuth" });
+  const t = Template.fromStack(stack);
+  t.hasResourceProperties("AWS::Lambda::WebFunctionEndpoint", { FunctionName: "rsc-mfe-staging-open", AuthType: "ApplicationManaged" });
+  t.hasResourceProperties("AWS::Lambda::WebFunctionEndpoint", { FunctionName: "rsc-mfe-staging-closed", AuthType: "IamAuth" });
+  assert.deepEqual(stack.resolve(closed.endpointArn)["Fn::GetAtt"][1], "EndpointArn");
+  assert.ok(open.endpointArn);
+});
+
 test("the execution role trusts Lambda, has basic logging and no fixed name", () => {
   const app = new App({ context: { "aws:cdk:bundling-stacks": [] } });
   const stack = new StageStack(app, "orders-api", staging);

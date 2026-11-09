@@ -17,6 +17,11 @@ export interface WebFunctionProps {
   environment?: Record<string, string>;
   /** Hashed client assets are copied here, never pruned, so every revision's HTML finds its files. */
   clientAssets?: { bucket: s3.IBucket; prefix: string };
+  /**
+   * Who may call the `live` endpoint. `ApplicationManaged` is open to the internet (the app verifies its own
+   * callers); `IamAuth` needs a SigV4-signed request from a principal granted lambda:InvokeWebFunctionEndpoint.
+   */
+  authType?: "ApplicationManaged" | "IamAuth";
 }
 
 /** One Lambda Web Function: its own role, a bundled revision, and a `live` endpoint at 100%. */
@@ -24,10 +29,12 @@ export class WebFunction extends Construct {
   readonly role: iam.Role;
   readonly domainName: string;
   readonly url: string;
+  /** The `live` endpoint's ARN: the resource of lambda:InvokeWebFunctionEndpoint grants. */
+  readonly endpointArn: string;
 
   constructor(scope: Construct, id: string, props: WebFunctionProps) {
     super(scope, id);
-    const { functionName, packageDir, environment = {}, clientAssets } = props;
+    const { functionName, packageDir, environment = {}, clientAssets, authType = "ApplicationManaged" } = props;
 
     this.role = new iam.Role(this, "Role", {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
@@ -72,13 +79,14 @@ export class WebFunction extends Construct {
       functionName,
       endpointName: "live",
       endpointType: "HomeRegion",
-      authType: "ApplicationManaged",
+      authType,
       revisionWeights: [{ revisionId: revision.attrRevisionId, weight: 100 }],
     });
     endpoint.addResourceDependency(fn);
 
     this.domainName = endpoint.attrDomainName;
     this.url = `https://${this.domainName}`;
+    this.endpointArn = endpoint.attrEndpointArn;
 
     if (clientAssets && Stack.of(this).bundlingRequired) {
       const deployment = new s3deploy.BucketDeployment(this, "ClientAssets", {
