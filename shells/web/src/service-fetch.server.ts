@@ -3,36 +3,12 @@
 // the signature against lambda:InvokeWebFunctionEndpoint and strips Authorization before forwarding.
 // The user's Cognito token therefore travels in its own header, x-user-token, and the service still
 // verifies it. Locally there is no IAM: a localhost URL or DEV_SESSION sends the request unsigned.
-import { createHash, createHmac } from "node:crypto";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
+import { Hash } from "@smithy/hash-node";
 import { SignatureV4 } from "@smithy/signature-v4";
 import type { SessionUser } from "./session.server.ts";
 
 export const USER_TOKEN_HEADER = "x-user-token";
-
-// SignatureV4 wants a hash constructor: `new H(secret)` is an HMAC, `new H()` a plain digest.
-class Sha256 {
-  private secret?: string | ArrayBuffer | ArrayBufferView;
-  private h: ReturnType<typeof createHash> | ReturnType<typeof createHmac>;
-  constructor(secret?: string | ArrayBuffer | ArrayBufferView) {
-    this.secret = secret;
-    this.h = this.make();
-  }
-  private make() {
-    return this.secret ? createHmac("sha256", this.secret as Buffer) : createHash("sha256");
-  }
-  update(data: string | ArrayBuffer | ArrayBufferView) {
-    this.h.update(
-      typeof data === "string" ? data : ArrayBuffer.isView(data) ? Buffer.from(data.buffer, data.byteOffset, data.byteLength) : Buffer.from(data),
-    );
-  }
-  async digest() {
-    return new Uint8Array(this.h.digest());
-  }
-  reset() {
-    this.h = this.make();
-  }
-}
 
 let signer: SignatureV4 | undefined;
 const getSigner = () =>
@@ -40,7 +16,8 @@ const getSigner = () =>
     service: "lambda",
     region: process.env.AWS_REGION!,
     credentials: defaultProvider(),
-    sha256: Sha256,
+    // new H(secret) is an HMAC, new H() a plain digest: the SDK's own adapter.
+    sha256: Hash.bind(null, "sha256"),
     // Requests carry no body here; the header below is set by hand and UNSIGNED-PAYLOAD is allowed.
     applyChecksum: false,
   }));
