@@ -136,6 +136,8 @@ export class BootstrapStack extends Stack {
         ]),
         allow(["s3:GetObject"], [cdkObjects]),
         allow(["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:DeleteObject"], stageBuckets),
+        // An app's signed call to its team's IAM-only service endpoint; each role's own policy picks the one.
+        allow(["lambda:InvokeWebFunctionEndpoint"], [`arn:aws:lambda:${region}:${account}:web-function/${p}-*/endpoint/*`]),
       ],
     });
 
