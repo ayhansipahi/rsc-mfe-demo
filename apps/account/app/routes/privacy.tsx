@@ -30,7 +30,7 @@ export function ServerComponent() {
       <p>No ads, no analytics, no tracking across apps or sites, and we never sell or share your data. The only cookie is the one that keeps you signed in.</p>
 
       <h2 className="text-lg font-semibold">Where it lives</h2>
-      <p>On Amazon Web Services in the EU (Stockholm). AWS processes it on our behalf only.</p>
+      <p>On Amazon Web Services in the EU (Frankfurt). AWS processes it on our behalf only.</p>
 
       <h2 className="text-lg font-semibold">Deleting your data</h2>
       <p>
