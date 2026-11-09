@@ -4,6 +4,13 @@ A micro-frontend demo: one site, three teams, every team owns its page vertical 
 ships it on its own schedule. React Server Components on Lambda Web Functions behind CloudFront;
 the same pages inside a native mobile shell.
 
+- Live: [rscmfe.sph.sh](https://rscmfe.sph.sh) (anyone can create an account)
+- iOS shell: [RSC Shell on the App Store](https://apps.apple.com/app/rsc-shell/id6830774732)
+- Write-up: [One Public Surface: Server Components, Passkeys, and a WebView Shell](https://sph.sh/en/posts/one-public-surface-server-components-webview-shell/)
+
+App Store listing metadata is in `shells/mobile/store/`, and the App Review notes are in
+`docs/app-store/review-notes.txt`.
+
 ## Three layers, one team per vertical
 
 ```
