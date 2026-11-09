@@ -16,14 +16,8 @@ export interface SessionUser {
   sub: string;
   username: string;
   token: string;
-  /** The request's x-flow-id (set by requestLog in index.js), forwarded to services by serviceHeaders. */
+  /** The request's x-flow-id (set by requestLog in index.js), forwarded to services by serviceFetch. */
   flow?: string;
-}
-
-// Headers for an app's call to its team's service: the user's token as a bearer, plus the flow id
-// so the service's log line carries the same id as the page's.
-export function serviceHeaders(user: Pick<SessionUser, "token" | "flow">): Record<string, string> {
-  return { authorization: `Bearer ${user.token}`, ...(user.flow && { "x-flow-id": user.flow }) };
 }
 
 function readCookie(request: Request): string | undefined {

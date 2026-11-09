@@ -13,7 +13,7 @@ test("GET /orders without a bearer token is 401", async () => {
 test("GET /orders with the dev stub returns the caller's orders", async () => {
   process.env.NODE_ENV = "development";
   process.env.DEV_SESSION = "me@example.com";
-  const r = await app.request("/orders", { headers: { authorization: "Bearer dev" } });
+  const r = await app.request("/orders", { headers: { "x-user-token": "dev" } });
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("x-vertical"), "orders-api");
   assert.equal(r.headers.get("cache-control"), "private, no-store");

@@ -1,3 +1,4 @@
+import * as iam from "aws-cdk-lib/aws-iam";
 import type * as s3 from "aws-cdk-lib/aws-s3";
 import type { Construct } from "constructs";
 import { StageStack } from "../../../infra/stage-stack.ts";
@@ -11,7 +12,7 @@ export class OrdersWebStack extends StageStack {
   constructor(
     scope: Construct,
     stage: StageConfig,
-    deps: { bucket: s3.IBucket; userPoolId: string; clientId: string; ordersApiUrl: string },
+    deps: { bucket: s3.IBucket; userPoolId: string; clientId: string; ordersApiUrl: string; ordersApiEndpointArn: string },
   ) {
     super(scope, "orders-web", stage);
     this.fn = new WebFunction(this, "Web", {
@@ -25,5 +26,9 @@ export class OrdersWebStack extends StageStack {
       },
       clientAssets: { bucket: deps.bucket, prefix: "orders-static/assets" },
     });
+    // The orders service endpoint is IAM-only; this role is the only one allowed to call it.
+    this.fn.role.addToPolicy(
+      new iam.PolicyStatement({ actions: ["lambda:InvokeWebFunctionEndpoint"], resources: [deps.ordersApiEndpointArn] }),
+    );
   }
 }

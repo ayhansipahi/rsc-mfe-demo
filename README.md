@@ -48,7 +48,7 @@ needs every app rebuilt. Add `?stitch` to any URL to outline each area
 with its owner and build time, and look at the `x-vertical` response header to see which
 function answered.
 Every response also carries `x-flow-id`: minted by the first function a request reaches,
-forwarded by an app to its service with the bearer, and printed in the one JSON log line each
+forwarded by an app to its service in `x-flow-id`, and printed in the one JSON log line each
 function writes per request. One id in CloudWatch finds the page and the service calls behind it.
 
 Every `<rsc-*>` tag ships with server HTML inside it: the nav links, the cart and sign-in
@@ -57,8 +57,13 @@ root covers it once it runs. Anything that must be indexed stays in the page own
 render, fragments only add what they own on top.
 
 Auth is a platform contract: `getUser(request)` from `@rsc-mfe/shell` verifies the Cognito
-cookie; apps carry no other auth code. Apps call their team's service with the user's access
-token as a bearer; the service verifies it and scopes every query to that user.
+cookie; apps carry no other auth code. Service endpoints are not public: each uses Lambda Web
+Functions `IamAuth`, so only the owning app's role (orders app to orders service, store app to
+cart service, granted `lambda:InvokeWebFunctionEndpoint` on that one endpoint) can call it.
+`serviceFetch` from `@rsc-mfe/shell/service-fetch.server` SigV4-signs the call with the app
+function's own credentials. Lambda strips `Authorization` after checking the signature, so the
+user's access token travels in `x-user-token`; the service verifies it and scopes every query to
+that user.
 
 ## Run one team's product on its own
 
@@ -76,7 +81,8 @@ SHELL_ORIGIN=http://localhost:4000 ORDERS_API_URL=… DEV_SESSION=… npm run de
 ```
 
 `DEV_SESSION` names a signed-in user outside production builds; the service accepts
-`Bearer dev` the same way. Links to other teams' pages 404 locally: the integrated site is
+`x-user-token: dev` the same way. Locally there is no IAM: a `localhost` service URL or
+`DEV_SESSION` makes `serviceFetch` send the call unsigned. Links to other teams' pages 404 locally: the integrated site is
 CloudFront.
 
 Tests: `npm test -w <package>` (`node --test`, no framework).

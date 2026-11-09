@@ -9,6 +9,8 @@ import { WebFunction } from "../../../infra/web-function.ts";
 
 export class CartApiStack extends StageStack {
   readonly url: string;
+  /** Only the store app's role is granted lambda:InvokeWebFunctionEndpoint on this. */
+  readonly endpointArn: string;
 
   constructor(scope: Construct, stage: StageConfig, deps: { userPoolId: string; clientId: string }) {
     super(scope, "cart-api", stage);
@@ -22,6 +24,7 @@ export class CartApiStack extends StageStack {
     const fn = new WebFunction(this, "Api", {
       functionName: `${prefix(stage)}-cart-api`,
       packageDir: "services/cart",
+      authType: "IamAuth",
       environment: {
         CARTS_TABLE: table.tableName,
         COGNITO_USER_POOL_ID: deps.userPoolId,
@@ -30,5 +33,6 @@ export class CartApiStack extends StageStack {
     });
     fn.role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:DeleteItem"], resources: [table.tableArn] }));
     this.url = fn.url;
+    this.endpointArn = fn.endpointArn;
   }
 }

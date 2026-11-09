@@ -9,6 +9,8 @@ import { WebFunction } from "../../../infra/web-function.ts";
 
 export class OrdersApiStack extends StageStack {
   readonly url: string;
+  /** Only the orders app's role is granted lambda:InvokeWebFunctionEndpoint on this. */
+  readonly endpointArn: string;
 
   constructor(scope: Construct, stage: StageConfig, deps: { userPoolId: string; clientId: string }) {
     super(scope, "orders-api", stage);
@@ -22,6 +24,7 @@ export class OrdersApiStack extends StageStack {
     const fn = new WebFunction(this, "Api", {
       functionName: `${prefix(stage)}-orders-api`,
       packageDir: "services/orders",
+      authType: "IamAuth",
       environment: {
         ORDERS_TABLE: table.tableName,
         COGNITO_USER_POOL_ID: deps.userPoolId,
@@ -30,5 +33,6 @@ export class OrdersApiStack extends StageStack {
     });
     fn.role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:Query"], resources: [table.tableArn] }));
     this.url = fn.url;
+    this.endpointArn = fn.endpointArn;
   }
 }

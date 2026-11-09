@@ -19,8 +19,8 @@ export function buildStage(app: App, stage: StageConfig) {
   const ordersApi = new OrdersApiStack(scope, stage, auth);
   const cartApi = new CartApiStack(scope, stage, auth);
   const shell = new ShellStack(scope, stage);
-  const ordersWeb = new OrdersWebStack(scope, stage, { bucket: assets.bucket, ...auth, ordersApiUrl: ordersApi.url });
-  const storeWeb = new StoreWebStack(scope, stage, { bucket: assets.bucket, ...auth, cartApiUrl: cartApi.url });
+  const ordersWeb = new OrdersWebStack(scope, stage, { bucket: assets.bucket, ...auth, ordersApiUrl: ordersApi.url, ordersApiEndpointArn: ordersApi.endpointArn });
+  const storeWeb = new StoreWebStack(scope, stage, { bucket: assets.bucket, ...auth, cartApiUrl: cartApi.url, cartApiEndpointArn: cartApi.endpointArn });
   const edge = new EdgeStack(scope, stage, {
     bucket: assets.bucket,
     account: account.fn.domainName,

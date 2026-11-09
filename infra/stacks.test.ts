@@ -61,15 +61,44 @@ test("each function holds only its own grants, on its own resources", () => {
     ["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"],
     [arnOf(account, "AWS::Cognito::UserPool")],
   );
-  assertRolePolicy(
-    storeWeb,
-    ["bedrock:InvokeModel"],
+  const invoke = (stack: Stack) => statements(stack).filter((s) => [s.Action].flat().includes("lambda:InvokeWebFunctionEndpoint"));
+  assert.deepEqual(
+    statements(storeWeb).filter((s) => !invoke(storeWeb).includes(s)).map((s) => [s.Action].flat()),
+    [["bedrock:InvokeModel"]],
+  );
+  assert.deepEqual(
+    statements(storeWeb)
+      .filter((s) => [s.Action].flat().includes("bedrock:InvokeModel"))
+      .flatMap((s) => [s.Resource].flat()),
     [
       `arn:aws:bedrock:eu-central-1:${staging.account}:inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
       "arn:aws:bedrock:eu-*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
     ],
   );
-  assert.equal(countPolicies(ordersWeb) + countPolicies(shell), 0);
+  assert.equal(countPolicies(shell), 0);
+  assert.equal(statements(ordersWeb).length, 1);
+});
+
+/** The one stack whose role may call each IAM-only service endpoint, and nobody else. */
+test("a service endpoint is IAM-only and only its owning app's role may invoke it", () => {
+  for (const service of [ordersApi, cartApi])
+    Template.fromStack(service).hasResourceProperties("AWS::Lambda::WebFunctionEndpoint", { AuthType: "IamAuth" });
+  for (const app of [account, shell, ordersWeb, storeWeb])
+    Template.fromStack(app).hasResourceProperties("AWS::Lambda::WebFunctionEndpoint", { AuthType: "ApplicationManaged" });
+
+  const grants = (stack: Stack) =>
+    statements(stack).filter((s) => [s.Action].flat().includes("lambda:InvokeWebFunctionEndpoint"));
+  // The endpoint ARN crosses stacks, so it arrives as an import of the service stack's export.
+  const importsFrom = (stmt: Stmt, service: Stack) => {
+    const res = [stmt.Resource].flat() as { "Fn::ImportValue"?: string }[];
+    return res.length === 1 && res[0]["Fn::ImportValue"]?.startsWith(service.stackName);
+  };
+  const [ordersGrant, ...ordersRest] = grants(ordersWeb);
+  const [cartGrant, ...cartRest] = grants(storeWeb);
+  assert.deepEqual([ordersRest.length, cartRest.length], [0, 0]);
+  assert.ok(importsFrom(ordersGrant, ordersApi), "orders app is granted the orders service endpoint");
+  assert.ok(importsFrom(cartGrant, cartApi), "store app is granted the cart service endpoint");
+  for (const other of [account, shell, ordersApi, cartApi]) assert.equal(grants(other).length, 0);
 });
 
 test("the assets bucket name is unique per account and region, inside the stage prefix", () => {

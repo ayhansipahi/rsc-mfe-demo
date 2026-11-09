@@ -12,7 +12,7 @@ export class StoreWebStack extends StageStack {
   constructor(
     scope: Construct,
     stage: StageConfig,
-    deps: { bucket: s3.IBucket; userPoolId: string; clientId: string; cartApiUrl: string },
+    deps: { bucket: s3.IBucket; userPoolId: string; clientId: string; cartApiUrl: string; cartApiEndpointArn: string },
   ) {
     super(scope, "store-web", stage);
     this.fn = new WebFunction(this, "Web", {
@@ -26,6 +26,10 @@ export class StoreWebStack extends StageStack {
       },
       clientAssets: { bucket: deps.bucket, prefix: "store-static/assets" },
     });
+    // The cart service endpoint is IAM-only; this role is the only one allowed to call it.
+    this.fn.role.addToPolicy(
+      new iam.PolicyStatement({ actions: ["lambda:InvokeWebFunctionEndpoint"], resources: [deps.cartApiEndpointArn] }),
+    );
     this.fn.role.addToPolicy(
       new iam.PolicyStatement({
         actions: ["bedrock:InvokeModel"],
