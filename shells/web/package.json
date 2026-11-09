@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./session.server": "./src/session.server.ts",
+    "./service-fetch.server": "./src/service-fetch.server.ts",
     "./node.server": "./src/node.server.js",
     "./chrome.server": "./src/chrome.server.ts",
     "./layout": "./src/layout.tsx",
@@ -19,7 +20,9 @@
     "test": "node --test 'src/**/*.test.*'"
   },
   "dependencies": {
+    "@aws-sdk/credential-provider-node": "3.972.93",
     "@hono/node-server": "2.1.6",
+    "@smithy/signature-v4": "5.7.5",
     "aws-jwt-verify": "5.2.1",
     "hono": "4.13.16"
   },

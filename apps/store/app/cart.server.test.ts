@@ -5,7 +5,7 @@ import { addLine, getCart } from "./cart.server.ts";
 
 const seen: { method?: string; url?: string; auth?: string }[] = [];
 const server = http.createServer((req, res) => {
-  seen.push({ method: req.method, url: req.url, auth: req.headers.authorization });
+  seen.push({ method: req.method, url: req.url, auth: req.headers["x-user-token"] as string });
   if (req.method === "GET") {
     res.setHeader("content-type", "application/json");
     return res.end(JSON.stringify({ lines: [{ productId: "kbd", qty: 2 }, { productId: "zzz", qty: 1 }] }));
@@ -20,7 +20,7 @@ test("getCart joins the service's lines with the catalog and drops unknown ids",
   try {
     assert.deepEqual(await getCart({ token: "t" }), [{ productId: "kbd", name: "Mechanical keyboard", price: 89, qty: 2 }]);
     await addLine({ token: "t" }, "kbd");
-    assert.deepEqual(seen.map((s) => `${s.method} ${s.url} ${s.auth}`), ["GET /cart Bearer t", "PUT /cart/kbd Bearer t"]);
+    assert.deepEqual(seen.map((s) => `${s.method} ${s.url} ${s.auth}`), ["GET /cart t", "PUT /cart/kbd t"]);
   } finally {
     server.close();
   }

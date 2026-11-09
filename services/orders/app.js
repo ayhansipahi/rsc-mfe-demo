@@ -1,7 +1,7 @@
-// The orders service: GET /orders for the bearer's user. Internal: reached by the orders app's
-// server, not by browsers, so it sits outside CloudFront.
+// The orders service: GET /orders for the token's user. Internal: reached by the orders app's
+// server, not by browsers. Its endpoint is IAM-only: only the orders app's role may invoke it.
 import { Hono } from "hono";
-import { verifyBearer } from "./auth.js";
+import { verifyUserToken } from "./auth.js";
 
 export function createApp({ listOrders }) {
   const app = new Hono();
@@ -20,7 +20,7 @@ export function createApp({ listOrders }) {
     await next();
   });
   app.get("/orders", async (c) => {
-    const user = await verifyBearer(c.req.header("authorization"));
+    const user = await verifyUserToken(c.req.header("x-user-token"));
     if (!user) return c.json({ error: "unauthorized" }, 401);
     return c.json(await listOrders(user.sub));
   });

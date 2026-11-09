@@ -1,8 +1,8 @@
-// The cart service: the bearer's cart lines. Internal: reached by the store app's server, which
+// The cart service: the bearer's cart lines. Internal: reached by the store app's server (its endpoint is IAM-only: only the store app's role may invoke it), which
 // owns the catalog and validates product ids against it before calling here; this service only
 // rejects ids that could not be a key.
 import { Hono } from "hono";
-import { verifyBearer } from "./auth.js";
+import { verifyUserToken } from "./auth.js";
 
 const PRODUCT_ID = /^[\w-]{1,32}$/;
 
@@ -20,7 +20,7 @@ export function createApp({ getLines, addLine, removeLine }) {
   app.use(async (c, next) => {
     c.header("x-vertical", "cart-api");
     c.header("Cache-Control", "private, no-store");
-    const user = await verifyBearer(c.req.header("authorization"));
+    const user = await verifyUserToken(c.req.header("x-user-token"));
     if (!user) return c.json({ error: "unauthorized" }, 401);
     c.set("user", user);
     await next();

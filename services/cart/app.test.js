@@ -10,7 +10,7 @@ const fakes = {
   removeLine: async (sub, id) => { calls.push(["remove", id]); lines.delete(`${sub}/${id}`); },
 };
 const app = createApp(fakes);
-const auth = { authorization: "Bearer dev" };
+const auth = { "x-user-token": "dev" };
 before(() => {
   process.env.NODE_ENV = "development";
   process.env.DEV_SESSION = "me@example.com";
