@@ -43,14 +43,27 @@ export async function serviceFetch(
   if (isLocalService(target) || process.env.DEV_SESSION) return fetch(url, { ...init, method, headers });
 
   headers["x-amz-content-sha256"] = "UNSIGNED-PAYLOAD";
-  const signed = await getSigner().sign({
-    method,
-    protocol: target.protocol,
-    hostname: target.hostname,
-    port: target.port ? Number(target.port) : undefined,
-    path: target.pathname,
-    query: Object.fromEntries(target.searchParams),
-    headers: { host: target.host, ...headers },
-  });
-  return fetch(url, { ...init, method, headers: signed.headers });
+  // Callers turn any failure into a bare 502, so this is the only place the cause gets logged.
+  const fail = (detail: object) =>
+    console.error(JSON.stringify({ flow: user.flow, serviceCall: `${method} ${target.host}${target.pathname}`, ...detail }));
+  try {
+    const signed = await getSigner().sign({
+      method,
+      protocol: target.protocol,
+      hostname: target.hostname,
+      port: target.port ? Number(target.port) : undefined,
+      path: target.pathname,
+      query: Object.fromEntries(target.searchParams),
+      headers: { host: target.host, ...headers },
+    });
+    const r = await fetch(url, { ...init, method, headers: signed.headers });
+    if (!r.ok) {
+      const body = await r.clone().text().catch((e) => `<unreadable: ${e}>`);
+      fail({ status: r.status, body: body.slice(0, 300) });
+    }
+    return r;
+  } catch (e) {
+    fail({ error: String(e), cause: String((e as Error).cause ?? "") });
+    throw e;
+  }
 }
