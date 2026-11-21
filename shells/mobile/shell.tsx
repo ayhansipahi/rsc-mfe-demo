@@ -111,6 +111,9 @@ export function TabStack() {
   return (
     <TabOf value={tabs.find((t) => t.name === name)!}>
       <Stack
+        // Off, as it is by default: a screen hidden by Activity drops its WebView handle, and open()
+        // needs the tab's own page reachable however deep the stack is.
+        activityEnabled={false}
         screenOptions={{
           // The pages carry their own heading, so the bar holds the back button and nothing else.
           title: "",
