@@ -12,7 +12,8 @@
       "appleTeamId": "3EWL9B9GPV",
       "supportsTablet": false,
       "associatedDomains": [
-        "webcredentials:rscmfe.sph.sh"
+        "webcredentials:rscmfe.sph.sh",
+        "applinks:rscmfe.sph.sh"
       ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -26,7 +27,23 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "rscmfe.sph.sh"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "plugins": [
       [

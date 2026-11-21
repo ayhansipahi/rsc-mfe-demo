@@ -69,6 +69,27 @@ const tabs: Tab[] = [
 
 // The tab's route: "/" for the (home) group, "/store" for app/store.
 const href = (tab: Tab) => (tab.name === "(home)" ? "/" : `/${tab.name}`);
+// The route a page pushed onto the tab's stack lives at, with its path as page?path=.
+const pageOf = (tab: Tab) => `${href(tab).replace(/\/$/, "")}/page`;
+
+// A link to the site tapped in Safari, Mail or Messages opens the app (universal and app links).
+// expo-router hands every incoming URL to app/+native-intent.tsx first. The site's paths are web
+// pages, not routes, so a link to the site is kept here for the shell and expo-router is told to
+// leave navigation alone. Other URLs (rscshell://) go on to expo-router as they are.
+let incoming: string | null = null;
+let deliver = () => {};
+export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
+  let url: URL;
+  try {
+    url = new URL(path);
+  } catch {
+    return path;
+  }
+  if (url.origin !== ORIGIN) return path;
+  incoming = url.pathname + url.search;
+  deliver();
+  return null;
+}
 
 // The script that takes a tab's WebView back to the tab's own page. Already on it, it runs `there`.
 const ownPage = (tab: Tab, there = "0") => {
@@ -246,7 +267,7 @@ export function Page() {
             .findIndex((p) => p === to || p.split("?")[0] === to);
           if (other) shell.open(other);
           else if (at >= 0) router.dismiss(under.length - at);
-          else router.push({ pathname: `${href(tab).replace(/\/$/, "")}/page`, params: { path: to } });
+          else router.push({ pathname: pageOf(tab), params: { path: to } });
           return false;
         }}
       />
@@ -326,7 +347,29 @@ export default function ShellLayout() {
   useEffect(() => {
     if (goTo.current) router.navigate(goTo.current);
     goTo.current = null;
+    follow();
   }, [signedIn]);
+
+  // A site link waits until the session is known: before that the tab bar does not know its tabs,
+  // and a session that turns out signed in remounts them all. A tab's own page opens that tab; any
+  // other page is pushed onto the tab its path starts with, Home if none.
+  // ponytail: the first tab in bar order wins a prefix, which is enough while no tab path is
+  // another's prefix but /store and /store/cart; pick the longest prefix if a deeper one appears.
+  function follow() {
+    const to = incoming;
+    if (to === null || knownSession.current === null) return;
+    incoming = null;
+    const shown = tabs.filter((t) => t.auth === undefined || t.auth === signedIn);
+    const own = shown.find((t) => t.path === to || t.path.split("?")[0] === to);
+    if (own) return open(own);
+    const pathname = to.split("?")[0];
+    const host = shown.find((t) => `${pathname}/`.startsWith(`${t.path.split("?")[0]}/`)) ?? tabs[0];
+    open(host);
+    router.push({ pathname: pageOf(host), params: { path: to } });
+  }
+  useEffect(() => {
+    deliver = follow;
+  });
 
   // Selects a tab on its own page, as a second tap on its button does: what is pushed in it pops,
   // and a WebView that has wandered (a search, a redirect) goes back to the tab's path. The pop
@@ -373,6 +416,8 @@ export default function ShellLayout() {
       // reloads every tab and no page keeps rendering the old session. On a signed-in launch that is
       // one extra load of the open tab, behind the Face ID lock.
       setSignedIn(msg.signedIn);
+      // The same tabs as before: no remount to wait for. Otherwise the effect above follows it.
+      if (msg.signedIn === signedIn) follow();
       if (flipped) {
         cartSeen.current = null;
         goTo.current = (msg.signedIn && returnTo.current) || "/store";
