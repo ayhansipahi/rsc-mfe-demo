@@ -10,6 +10,7 @@
 // the Store tab's accessory takes a photo and hands it to the page, which owns the search call.
 // app/ holds one route file per tab; each re-exports Page or this layout.
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as Haptics from "expo-haptics";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -147,6 +148,8 @@ export function Page() {
             </Pressable>
           </View>
         )}
+        // The retry screen arrives with the system's error tap, as a failed native action does.
+        onError={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)}
         // Fires for a failed load too, so the launch screen never outlives the first answer.
         onLoadEnd={SplashScreen.hide}
         // The bar of arrows and Done that WebKit puts above the keyboard; native forms have none.
@@ -169,6 +172,8 @@ export default function ShellLayout() {
   const [signedIn, setSignedIn] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const knownSession = useRef<boolean | null>(null);
+  // The cart count last reported inside the current signed-in session; null until there is one.
+  const cartSeen = useRef<number | null>(null);
   const returnTo = useRef<string | null>(null);
   const goTo = useRef<string | null>(null);
   const views = useRef<Record<string, WebViewHandle | null>>({});
@@ -239,7 +244,17 @@ export default function ShellLayout() {
     } catch {
       return;
     }
-    if (msg.type === "cart") setCartCount(msg.count);
+    if (msg.type === "cart") {
+      // A WebView has no haptics, so the shell gives an add the tap it would get in a native store.
+      // An add is a count that rose between two reports of one signed-in session; a launch or a
+      // sign-in that finds a full cart is a first report and stays silent. ponytail: inferred from
+      // the count; a message of its own is the upgrade once a page wants feedback the shell can't infer.
+      if (knownSession.current && cartSeen.current !== null && msg.count > cartSeen.current) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      cartSeen.current = knownSession.current ? msg.count : null;
+      setCartCount(msg.count);
+    }
     if (msg.type === "auth-required") {
       // A guest tapped something that needs a session: sign in, then come back to this tab.
       returnTo.current = pathname;
@@ -257,6 +272,7 @@ export default function ShellLayout() {
       // one extra load of the open tab, behind the Face ID lock.
       setSignedIn(msg.signedIn);
       if (flipped) {
+        cartSeen.current = null;
         goTo.current = (msg.signedIn && returnTo.current) || "/store";
         returnTo.current = null;
       }
