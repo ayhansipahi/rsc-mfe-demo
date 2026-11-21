@@ -16,11 +16,17 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { useFocusEffect, usePathname, useRouter } from "expo-router";
 import { DarkTheme, DefaultTheme, ThemeProvider, useRoute } from "expo-router/react-navigation";
 import { NativeTabs, type MaterialIcon, type SFSymbolIcon } from "expo-router/native-tabs";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { createContext, use, useCallback, useEffect, useRef, useState } from "react";
-import { AppState, BackHandler, DynamicColorIOS, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { ActivityIndicator, AppState, BackHandler, DynamicColorIOS, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
+
+// The launch screen stays up until the first page has loaded, then fades: launch goes from the mark
+// to content with no empty frame between. Here, not in an effect: it has to run before a render.
+SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ fade: true, duration: 250 });
 
 export const ORIGIN = "https://rscmfe.sph.sh";
 // Appended to the User-Agent. The web app keys its chrome off it and renders pages without the web nav.
@@ -66,10 +72,12 @@ type ShellMessage =
 interface WebViewHandle {
   injectJavaScript(js: string): void;
   goBack(): void;
+  reload(): void;
 }
 
 const Shell = createContext<{
   bg: string;
+  fg: string;
   onMessage(event: WebViewMessageEvent): void;
   views: Record<string, WebViewHandle | null>;
 } | null>(null);
@@ -122,6 +130,29 @@ export function Page() {
         onNavigationStateChange={(state) => {
           canGoBack.current = state.canGoBack;
         }}
+        // A tab's first load shows the system spinner on the shell's background, and a load that
+        // fails shows a screen with a retry: never an empty page, never WebKit's error text.
+        startInLoadingState
+        renderLoading={() => (
+          <View style={[StyleSheet.absoluteFill, styles.cover, { backgroundColor: shell.bg }]}>
+            <ActivityIndicator />
+          </View>
+        )}
+        renderError={() => (
+          <View style={[StyleSheet.absoluteFill, styles.cover, { backgroundColor: shell.bg }]}>
+            <Ionicons name="cloud-offline-outline" size={40} color={shell.fg} />
+            <Text style={[styles.coverTitle, { color: shell.fg }]}>Can't load this page</Text>
+            <Pressable onPress={() => shell.views[name]?.reload()} style={[styles.coverButton, { borderColor: shell.fg }]}>
+              <Text style={{ color: shell.fg }}>Try again</Text>
+            </Pressable>
+          </View>
+        )}
+        // Fires for a failed load too, so the launch screen never outlives the first answer.
+        onLoadEnd={SplashScreen.hide}
+        // The bar of arrows and Done that WebKit puts above the keyboard; native forms have none.
+        hideKeyboardAccessoryView
+        // A long press on a link would lift a preview that opens the page in Safari, outside the app.
+        allowsLinkPreview={false}
         // Anything off-origin would leave the product; keep it inside the shell's one domain.
         // Compare origins, not prefixes: a startsWith check also matches look-alike hosts.
         onShouldStartLoadWithRequest={(req) => new URL(req.url).origin === ORIGIN}
@@ -176,6 +207,13 @@ export default function ShellLayout() {
     views.current.store?.injectJavaScript(`dispatchEvent(new CustomEvent("shell:photo",{detail:${JSON.stringify(base64)}}));true;`);
   }
 
+  // ponytail: a fixed ceiling on the launch screen. On a slow network the first page can take longer
+  // than anyone should look at a logo; after this the tab's own spinner takes over.
+  useEffect(() => {
+    const timer = setTimeout(SplashScreen.hide, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       // ponytail: locks on every return; add a grace period if quick app switches get annoying.
@@ -228,7 +266,7 @@ export default function ShellLayout() {
   return (
     <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <StatusBar style="auto" />
-      <Shell value={{ bg: theme.bg, onMessage, views: views.current }}>
+      <Shell value={{ bg: theme.bg, fg: theme.active, onMessage, views: views.current }}>
         {/* ponytail: no minimizeBehavior. The bar shrinks on scroll only when UIKit finds the tab's
           scroll view, and it does not look inside a WKWebView; a native scroll-view marker would. */}
         <NativeTabs tintColor={tint}>
@@ -268,10 +306,10 @@ export default function ShellLayout() {
         </NativeTabs>
       </Shell>
       {locked && (
-        <View style={[StyleSheet.absoluteFill, styles.lock, { backgroundColor: theme.bg }]}>
+        <View style={[StyleSheet.absoluteFill, styles.cover, { backgroundColor: theme.bg }]}>
           <Ionicons name="lock-closed-outline" size={40} color={theme.active} />
-          <Text style={[styles.lockTitle, { color: theme.active }]}>RSC Shell is locked</Text>
-          <Pressable onPress={unlock} style={[styles.lockButton, { borderColor: theme.active }]}>
+          <Text style={[styles.coverTitle, { color: theme.active }]}>RSC Shell is locked</Text>
+          <Pressable onPress={unlock} style={[styles.coverButton, { borderColor: theme.active }]}>
             <Text style={{ color: theme.active }}>{Platform.OS === "ios" ? "Unlock with Face ID" : "Unlock"}</Text>
           </Pressable>
         </View>
@@ -282,7 +320,8 @@ export default function ShellLayout() {
 
 const styles = StyleSheet.create({
   accessory: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  lock: { alignItems: "center", justifyContent: "center", gap: 16 },
-  lockTitle: { fontSize: 17, fontWeight: "600" },
-  lockButton: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  // A full-screen stand-in for a page: the lock, a first load, a failed load.
+  cover: { alignItems: "center", justifyContent: "center", gap: 16 },
+  coverTitle: { fontSize: 17, fontWeight: "600" },
+  coverButton: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
 });

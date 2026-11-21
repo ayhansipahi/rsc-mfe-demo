@@ -43,7 +43,19 @@
           "microphonePermission": false
         }
       ],
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/android-icon-foreground.png",
+          "imageWidth": 200,
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "image": "./assets/android-icon-foreground.png",
+            "backgroundColor": "#030712"
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {

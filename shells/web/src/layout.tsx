@@ -101,7 +101,8 @@ export function Page({ shell, owner, build, shellOrigin, stitch, email, cartCoun
         </>
       )}
       {/* w-full: .root is a flex column (fragments/chrome.css), where mx-auto alone would shrink main to its content. */}
-      <main data-owner={owner} data-build={build} className="mx-auto w-full max-w-3xl space-y-4 p-6">
+      {/* data-shell: app.css turns off the browser's long-press and tap feedback inside the mobile shell. */}
+      <main data-owner={owner} data-build={build} data-shell={shell ? "" : undefined} className="mx-auto w-full max-w-3xl space-y-4 p-6">
         {children}
       </main>
       {!shell && (
