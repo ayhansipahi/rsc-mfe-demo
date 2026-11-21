@@ -1,1 +1,1 @@
-export { TabStack as default } from "../../shell";
+export { TabStack as default, unstable_settings } from "../../shell";

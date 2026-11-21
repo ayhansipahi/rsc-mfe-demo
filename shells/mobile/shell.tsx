@@ -119,6 +119,10 @@ export function TabStack() {
   );
 }
 
+// Re-exported by every tab layout. A deep link straight to a pushed page still gets the tab's own
+// page under it, so the back button and a tab re-tap have somewhere to go.
+export const unstable_settings = { anchor: "index" };
+
 // app/<tab>/index.tsx and page.tsx. One screen: a WebView with its own history and scroll, on the
 // tab's own page or, as page?path=, on the page a link led to. The page runs under the glass bar;
 // automatic insets keep its last row scrollable above it.
