@@ -20,6 +20,7 @@ import { DarkTheme, DefaultTheme, StackActions, ThemeProvider, useRoute } from "
 import { Stack } from "expo-router/stack";
 import { NativeTabs, type MaterialIcon, type SFSymbolIcon } from "expo-router/native-tabs";
 import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { createContext, use, useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, BackHandler, DynamicColorIOS, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
@@ -30,6 +31,21 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 // to content with no empty frame between. Here, not in an effect: it has to run before a render.
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ fade: true, duration: 250 });
+
+// A notification that arrives while the app is open shows as a banner, as in a native app.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }),
+});
+// Asked when a guest signs in (the system prompts only the first time): what the app will notify
+// about (orders) needs a session, and asking at launch gets a reflex "Don't Allow". Android 13
+// shows no prompt until a channel exists.
+// ponytail: no push token yet. It goes with the backend that stores it and sends (Expo push service).
+async function askForNotifications() {
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", { name: "Default", importance: Notifications.AndroidImportance.DEFAULT });
+  }
+  await Notifications.requestPermissionsAsync();
+}
 
 export const ORIGIN = "https://rscmfe.sph.sh";
 // Appended to the User-Agent. The web app keys its chrome off it and renders pages without the web nav.
@@ -370,6 +386,14 @@ export default function ShellLayout() {
   useEffect(() => {
     deliver = follow;
   });
+  // A tapped notification opens the page in its data's url, the way a universal link does: the
+  // sender puts { url: "https://rscmfe.sph.sh/orders" } in the push. The hook also returns the
+  // notification that launched the app, and each tap only once.
+  const tapped = Notifications.useLastNotificationResponse();
+  useEffect(() => {
+    const url = tapped?.notification.request.content.data?.url;
+    if (typeof url === "string") redirectSystemPath({ path: url, initial: false });
+  }, [tapped]);
 
   // Selects a tab on its own page, as a second tap on its button does: what is pushed in it pops,
   // and a WebView that has wandered (a search, a redirect) goes back to the tab's path. The pop
@@ -419,6 +443,7 @@ export default function ShellLayout() {
       // The same tabs as before: no remount to wait for. Otherwise the effect above follows it.
       if (msg.signedIn === signedIn) follow();
       if (flipped) {
+        if (msg.signedIn) askForNotifications();
         cartSeen.current = null;
         goTo.current = (msg.signedIn && returnTo.current) || "/store";
         returnTo.current = null;
