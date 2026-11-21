@@ -8,14 +8,16 @@
 // Two native capabilities sit on top. A Face ID lock on launch and on return from the background: it
 // gates the screen, not the session; signing in stays the page's passkey ceremony. And the camera:
 // the Store tab's accessory takes a photo and hands it to the page, which owns the search call.
-// app/ holds one route file per tab; each re-exports Page or this layout.
+// app/ holds one directory per tab: a stack layout, the tab's own page, and the page a link pushes.
+// Each file re-exports from here.
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Haptics from "expo-haptics";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as LocalAuthentication from "expo-local-authentication";
-import { useFocusEffect, usePathname, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, usePathname, useRouter } from "expo-router";
 import { DarkTheme, DefaultTheme, ThemeProvider, useRoute } from "expo-router/react-navigation";
+import { Stack } from "expo-router/stack";
 import { NativeTabs, type MaterialIcon, type SFSymbolIcon } from "expo-router/native-tabs";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -44,7 +46,7 @@ const themes = {
 const tint = Platform.OS === "ios" ? DynamicColorIOS({ light: themes.light.active, dark: themes.dark.active }) : undefined;
 
 interface Tab {
-  // The route file under app/.
+  // The route directory under app/.
   name: string;
   label: string;
   path: string;
@@ -57,13 +59,16 @@ interface Tab {
 // and a Sign in tab is, so no tab ever opens on a login page. Signed in, that slot is the Account
 // tab: the account vertical's page with passkeys and sign out.
 const tabs: Tab[] = [
-  { name: "index", label: "Home", path: "/", icon: { sf: { default: "house", selected: "house.fill" }, md: "home" } },
+  { name: "(home)", label: "Home", path: "/", icon: { sf: { default: "house", selected: "house.fill" }, md: "home" } },
   { name: "store", label: "Store", path: "/store", icon: { sf: { default: "storefront", selected: "storefront.fill" }, md: "storefront" } },
   { name: "cart", label: "Cart", path: "/store/cart", icon: { sf: { default: "cart", selected: "cart.fill" }, md: "shopping_cart" }, auth: true },
   { name: "orders", label: "Orders", path: "/orders", icon: { sf: { default: "shippingbox", selected: "shippingbox.fill" }, md: "package_2" }, auth: true },
   { name: "account", label: "Account", path: "/account", icon: { sf: { default: "person.crop.circle", selected: "person.crop.circle.fill" }, md: "account_circle" }, auth: true },
   { name: "signin", label: "Sign in", path: "/login?next=/store", icon: { sf: "person.crop.circle", md: "login" }, auth: false },
 ];
+
+// The tab's route: "/" for the (home) group, "/store" for app/store.
+const href = (tab: Tab) => (tab.name === "(home)" ? "/" : `/${tab.name}`);
 
 type ShellMessage =
   | { type: "session"; signedIn: boolean; email?: string }
@@ -79,44 +84,86 @@ interface WebViewHandle {
 const Shell = createContext<{
   bg: string;
   fg: string;
+  signedIn: boolean;
   onMessage(event: WebViewMessageEvent): void;
+  // Each tab's own page, the first screen of its stack.
   views: Record<string, WebViewHandle | null>;
 } | null>(null);
 
-// One tab's screen: a WebView on its path. Each tab keeps its own history and scroll, like native
-// stacks. The page runs under the glass bar; automatic insets keep its last row scrollable above it.
-export function Page() {
+// Which tab a screen belongs to. From the tab's layout, not from the URL: every tab's screens stay
+// mounted, and the URL only ever names the focused one.
+const TabOf = createContext<Tab | null>(null);
+
+// app/<tab>/_layout.tsx. One tab: its own UINavigationController, as a native tab has. A link tapped
+// on a page pushes its target as a new screen, so pages slide in, the back button and the edge swipe
+// pop them, and tapping the selected tab returns to the tab's own page.
+export function TabStack() {
   const shell = use(Shell)!;
   const { name } = useRoute();
-  const tab = tabs.find((t) => t.name === name)!;
+  return (
+    <TabOf value={tabs.find((t) => t.name === name)!}>
+      <Stack
+        screenOptions={{
+          // The pages carry their own heading, so the bar holds the back button and nothing else.
+          title: "",
+          headerBackButtonDisplayMode: "minimal",
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: shell.bg },
+          headerTintColor: shell.fg,
+          contentStyle: { backgroundColor: shell.bg },
+        }}
+      >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+      </Stack>
+    </TabOf>
+  );
+}
+
+// app/<tab>/index.tsx and page.tsx. One screen: a WebView with its own history and scroll, on the
+// tab's own page or, as page?path=, on the page a link led to. The page runs under the glass bar;
+// automatic insets keep its last row scrollable above it.
+export function Page() {
+  const shell = use(Shell)!;
+  const tab = use(TabOf)!;
+  const name = tab.name;
+  const root = useRoute().name === "index";
+  // A deep link can write this param, so only a path on the origin counts: "@other.host" appended
+  // to the origin would name another host.
+  const pushed = useLocalSearchParams<{ path?: string | string[] }>().path;
+  const path = !root && typeof pushed === "string" && pushed.startsWith("/") ? pushed : tab.path;
+  const navigation = useNavigation();
+  const router = useRouter();
   const top = useSafeAreaInsets().top;
+  const web = useRef<WebViewHandle | null>(null);
   const seen = useRef(false);
   const canGoBack = useRef(false);
   useFocusEffect(
     useCallback(() => {
       // The cart page is server-rendered; adds from the Store tab happened in another WebView.
       // A page-side reload, not WebView.reload(): that one shows the library's white loading view.
-      if (name === "cart" && seen.current) shell.views.cart?.injectJavaScript("location.reload();true;");
+      if (root && name === "cart" && seen.current) web.current?.injectJavaScript("location.reload();true;");
       seen.current = true;
       // Android's back walks the page's history first; at its start the system takes over. iOS has
       // the edge swipe on the WebView itself and never fires this.
       const back = BackHandler.addEventListener("hardwareBackPress", () => {
-        if (canGoBack.current) shell.views[name]?.goBack();
+        if (canGoBack.current) web.current?.goBack();
         return canGoBack.current;
       });
       return () => back.remove();
-    }, [name, shell]),
+    }, [name, root]),
   );
   return (
-    <View style={{ flex: 1, paddingTop: top, backgroundColor: shell.bg }}>
+    // The tab's own page has no bar, so it clears the status bar itself.
+    <View style={{ flex: 1, paddingTop: root ? top : 0, backgroundColor: shell.bg }}>
       <WebView
         ref={(view) => {
-          shell.views[name] = view;
+          web.current = view;
+          if (root) shell.views[name] = view;
         }}
         // The page paints its own theme through prefers-color-scheme; this only covers the frames
         // before the first paint, which would otherwise flash white in dark mode.
         style={{ flex: 1, backgroundColor: shell.bg }}
-        source={{ uri: `${ORIGIN}${tab.path}` }}
+        source={{ uri: `${ORIGIN}${path}` }}
         applicationNameForUserAgent={SHELL_UA}
         allowsBackForwardNavigationGestures
         // The system refresh control on the page's own scroll view. It reloads natively, so the
@@ -143,7 +190,7 @@ export function Page() {
           <View style={[StyleSheet.absoluteFill, styles.cover, { backgroundColor: shell.bg }]}>
             <Ionicons name="cloud-offline-outline" size={40} color={shell.fg} />
             <Text style={[styles.coverTitle, { color: shell.fg }]}>Can't load this page</Text>
-            <Pressable onPress={() => shell.views[name]?.reload()} style={[styles.coverButton, { borderColor: shell.fg }]}>
+            <Pressable onPress={() => web.current?.reload()} style={[styles.coverButton, { borderColor: shell.fg }]}>
               <Text style={{ color: shell.fg }}>Try again</Text>
             </Pressable>
           </View>
@@ -156,9 +203,29 @@ export function Page() {
         hideKeyboardAccessoryView
         // A long press on a link would lift a preview that opens the page in Safari, outside the app.
         allowsLinkPreview={false}
-        // Anything off-origin would leave the product; keep it inside the shell's one domain.
-        // Compare origins, not prefixes: a startsWith check also matches look-alike hosts.
-        onShouldStartLoadWithRequest={(req) => new URL(req.url).origin === ORIGIN}
+        onShouldStartLoadWithRequest={(req) => {
+          const url = new URL(req.url);
+          // Anything off-origin would leave the product; keep it inside the shell's one domain.
+          // Compare origins, not prefixes: a startsWith check also matches look-alike hosts.
+          if (url.origin !== ORIGIN) return false;
+          // Only a tapped link becomes a screen. Redirects, form posts and the page's own
+          // location changes stay in this WebView, as does a link to the page itself. Android's
+          // WebView does not say what started a navigation, so there every page loads in place.
+          const to = url.pathname + url.search;
+          if (req.navigationType !== "click" || to === path) return true;
+          // Another tab's own page: go to that tab, not to a second copy of it in this one.
+          const other = tabs.find((t) => t.path === to && t.name !== name && t.auth !== !shell.signedIn);
+          const under = navigation.getState()?.routes.slice(0, -1) ?? [];
+          // A link back to a page this stack already holds pops to it. Without its query too:
+          // "/login" is the Sign in tab's "/login?next=/store".
+          const at = under
+            .map((r) => (r.params as { path?: string } | undefined)?.path ?? tab.path)
+            .findIndex((p) => p === to || p.split("?")[0] === to);
+          if (other) router.navigate(href(other));
+          else if (at >= 0) router.dismiss(under.length - at);
+          else router.push({ pathname: `${href(tab).replace(/\/$/, "")}/page`, params: { path: to } });
+          return false;
+        }}
       />
     </View>
   );
@@ -257,7 +324,8 @@ export default function ShellLayout() {
     }
     if (msg.type === "auth-required") {
       // A guest tapped something that needs a session: sign in, then come back to this tab.
-      returnTo.current = pathname;
+      // To the tab, not to a page pushed in it: that screen is gone once the tabs remount.
+      returnTo.current = pathname.replace(/\/page$/, "") || "/";
       router.navigate("/signin");
     }
     if (msg.type === "session") {
@@ -282,7 +350,7 @@ export default function ShellLayout() {
   return (
     <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <StatusBar style="auto" />
-      <Shell value={{ bg: theme.bg, fg: theme.active, onMessage, views: views.current }}>
+      <Shell value={{ bg: theme.bg, fg: theme.active, signedIn, onMessage, views: views.current }}>
         {/* ponytail: no minimizeBehavior. The bar shrinks on scroll only when UIKit finds the tab's
           scroll view, and it does not look inside a WKWebView; a native scroll-view marker would. */}
         <NativeTabs tintColor={tint}>
