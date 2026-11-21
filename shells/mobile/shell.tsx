@@ -16,7 +16,7 @@ import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import * as LocalAuthentication from "expo-local-authentication";
 import { useFocusEffect, useLocalSearchParams, useNavigation, usePathname, useRouter } from "expo-router";
-import { DarkTheme, DefaultTheme, ThemeProvider, useRoute } from "expo-router/react-navigation";
+import { DarkTheme, DefaultTheme, StackActions, ThemeProvider, useRoute } from "expo-router/react-navigation";
 import { Stack } from "expo-router/stack";
 import { NativeTabs, type MaterialIcon, type SFSymbolIcon } from "expo-router/native-tabs";
 import * as SplashScreen from "expo-splash-screen";
@@ -70,6 +70,12 @@ const tabs: Tab[] = [
 // The tab's route: "/" for the (home) group, "/store" for app/store.
 const href = (tab: Tab) => (tab.name === "(home)" ? "/" : `/${tab.name}`);
 
+// The script that takes a tab's WebView back to the tab's own page. Already on it, it runs `there`.
+const ownPage = (tab: Tab, there = "0") => {
+  const path = JSON.stringify(tab.path);
+  return `location.pathname+location.search===${path}?${there}:location.assign(${path});true;`;
+};
+
 type ShellMessage =
   | { type: "session"; signedIn: boolean; email?: string }
   | { type: "cart"; count: number }
@@ -86,8 +92,10 @@ const Shell = createContext<{
   fg: string;
   signedIn: boolean;
   onMessage(event: WebViewMessageEvent): void;
-  // Each tab's own page, the first screen of its stack.
+  open(tab: Tab): void;
+  // Each tab's own page, the first screen of its stack, and what pops that stack back to it.
   views: Record<string, WebViewHandle | null>;
+  pops: Record<string, (() => void) | null>;
 } | null>(null);
 
 // Which tab a screen belongs to. From the tab's layout, not from the URL: every tab's screens stay
@@ -162,7 +170,15 @@ export function Page() {
       <WebView
         ref={(view) => {
           web.current = view;
-          if (root) shell.views[name] = view;
+          if (!root) return;
+          shell.views[name] = view;
+          shell.pops[name] =
+            view &&
+            (() => {
+              // Only with something pushed: on a bare stack nothing handles the action, which
+              // React Navigation reports as an error.
+              if ((navigation.getState()?.routes.length ?? 1) > 1) navigation.dispatch(StackActions.popToTop());
+            });
         }}
         // The page paints its own theme through prefers-color-scheme; this only covers the frames
         // before the first paint, which would otherwise flash white in dark mode.
@@ -225,7 +241,7 @@ export function Page() {
           const at = under
             .map((r) => (r.params as { path?: string } | undefined)?.path ?? tab.path)
             .findIndex((p) => p === to || p.split("?")[0] === to);
-          if (other) router.navigate(href(other));
+          if (other) shell.open(other);
           else if (at >= 0) router.dismiss(under.length - at);
           else router.push({ pathname: `${href(tab).replace(/\/$/, "")}/page`, params: { path: to } });
           return false;
@@ -248,6 +264,7 @@ export default function ShellLayout() {
   const returnTo = useRef<string | null>(null);
   const goTo = useRef<string | null>(null);
   const views = useRef<Record<string, WebViewHandle | null>>({});
+  const pops = useRef<Record<string, (() => void) | null>>({});
   const [locked, setLocked] = useState(false);
   // Set on launch and on every trip to the background; the next known session decides. A guest has
   // nothing to protect, and a sign-in that just happened was itself Face ID, so neither locks.
@@ -308,6 +325,16 @@ export default function ShellLayout() {
     goTo.current = null;
   }, [signedIn]);
 
+  // Selects a tab on its own page, as a second tap on its button does: what is pushed in it pops,
+  // and a WebView that has wandered (a search, a redirect) goes back to the tab's path. The pop
+  // comes first and goes to that tab's own stack: navigate alone pushes a second copy of the tab's
+  // page onto a stack that holds pushed screens.
+  function open(tab: Tab) {
+    views.current[tab.name]?.injectJavaScript(ownPage(tab));
+    pops.current[tab.name]?.();
+    router.navigate(href(tab));
+  }
+
   function onMessage(event: WebViewMessageEvent) {
     let msg: ShellMessage;
     try {
@@ -330,7 +357,7 @@ export default function ShellLayout() {
       // A guest tapped something that needs a session: sign in, then come back to this tab.
       // To the tab, not to a page pushed in it: that screen is gone once the tabs remount.
       returnTo.current = pathname.replace(/\/page$/, "") || "/";
-      router.navigate("/signin");
+      open(tabs.find((t) => t.name === "signin")!);
     }
     if (msg.type === "session") {
       if (needsUnlock.current) {
@@ -354,7 +381,7 @@ export default function ShellLayout() {
   return (
     <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
       <StatusBar style="auto" />
-      <Shell value={{ bg: theme.bg, fg: theme.active, signedIn, onMessage, views: views.current }}>
+      <Shell value={{ bg: theme.bg, fg: theme.active, signedIn, onMessage, open, views: views.current, pops: pops.current }}>
         {/* ponytail: no minimizeBehavior. The bar shrinks on scroll only when UIKit finds the tab's
           scroll view, and it does not look inside a WKWebView; a native scroll-view marker would. */}
         <NativeTabs tintColor={tint}>
@@ -379,10 +406,7 @@ export default function ShellLayout() {
               listeners={({ navigation }) => ({
                 tabPress: () => {
                   if (!navigation.isFocused()) return;
-                  const path = JSON.stringify(tab.path);
-                  views.current[tab.name]?.injectJavaScript(
-                    `location.pathname+location.search===${path}?scrollTo({top:0,behavior:"smooth"}):location.assign(${path});true;`,
-                  );
+                  views.current[tab.name]?.injectJavaScript(ownPage(tab, 'scrollTo({top:0,behavior:"smooth"})'));
                 },
               })}
             >
