@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import type * as s3 from "aws-cdk-lib/aws-s3";
 import type { Construct } from "constructs";
 import { StageStack } from "../../../infra/stage-stack.ts";
@@ -48,6 +51,25 @@ export class AccountStack extends StageStack {
     this.userPoolId = pool.userPoolId;
     this.clientId = client.userPoolClientId;
 
+    // The mobile shell's push tokens (see app/routes/auth.push-token.ts), and the hand-run function
+    // that sends to them (push-send.cjs).
+    const pushTokens = new dynamodb.Table(this, "PushTokens", {
+      tableName: `${prefix(stage)}-push-tokens`,
+      partitionKey: { name: "pk", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "token", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: RemovalPolicy.RETAIN,
+    });
+    const pushSend = new lambda.Function(this, "PushSend", {
+      functionName: `${prefix(stage)}-push-send`,
+      runtime: lambda.Runtime.NODEJS_24_X,
+      handler: "index.handler",
+      code: lambda.Code.fromInline(readFileSync("apps/account/infra/push-send.cjs", "utf8")),
+      timeout: Duration.seconds(30),
+      environment: { PUSH_TABLE: pushTokens.tableName },
+    });
+    pushSend.addToRolePolicy(new iam.PolicyStatement({ actions: ["dynamodb:Query"], resources: [pushTokens.tableArn] }));
+
     this.fn = new WebFunction(this, "Web", {
       functionName: `${prefix(stage)}-web`,
       packageDir: "apps/account",
@@ -55,6 +77,7 @@ export class AccountStack extends StageStack {
         COGNITO_USER_POOL_ID: pool.userPoolId,
         COGNITO_CLIENT_ID: client.userPoolClientId,
         COGNITO_CLIENT_SECRET: (client.node.defaultChild as cognito.CfnUserPoolClient).attrClientSecret,
+        PUSH_TABLE: pushTokens.tableName,
         ...(domain && { PUBLIC_HOST: domain.name }),
         ...(mobile && {
           APPLE_APP_IDS: mobile.appleAppIds,
@@ -70,5 +93,6 @@ export class AccountStack extends StageStack {
         resources: [pool.userPoolArn],
       }),
     );
+    this.fn.role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:PutItem", "dynamodb:DeleteItem"], resources: [pushTokens.tableArn] }));
   }
 }

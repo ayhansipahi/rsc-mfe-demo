@@ -13,4 +13,5 @@ export default [
   // Resource routes (no component): the passkey ceremony's server half and the session contract.
   route("auth/passkey", "routes/auth.passkey.ts"),
   route("auth/me", "routes/auth.me.ts"),
+  route("auth/push-token", "routes/auth.push-token.ts"),
 ] satisfies RouteConfig;

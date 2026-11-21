@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "3.1163.0",
+    "@aws-sdk/client-dynamodb": "3.1163.0",
     "@hono/node-server": "2.1.6",
     "@rsc-mfe/shell": "file:../../shells/web",
     "@simplewebauthn/browser": "13.3.0",

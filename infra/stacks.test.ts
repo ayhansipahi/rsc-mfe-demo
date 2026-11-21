@@ -56,11 +56,17 @@ test("each function holds only its own grants, on its own resources", () => {
     ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:DeleteItem"],
     [arnOf(cartApi, "AWS::DynamoDB::Table")],
   );
-  assertRolePolicy(
-    account,
-    ["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"],
-    [arnOf(account, "AWS::Cognito::UserPool")],
+  assert.deepEqual(
+    statements(account).map((s) => [[s.Action].flat().sort(), [s.Resource].flat()]),
+    [
+      [["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"], [arnOf(account, "AWS::Cognito::UserPool")]],
+      [["dynamodb:DeleteItem", "dynamodb:PutItem"], [arnOf(account, "AWS::DynamoDB::Table")]],
+    ],
   );
+  // The hand-run push sender only reads the tokens.
+  Template.fromStack(account).hasResourceProperties("AWS::IAM::Policy", {
+    PolicyDocument: { Statement: [{ Action: "dynamodb:Query", Effect: "Allow", Resource: arnOf(account, "AWS::DynamoDB::Table") }] },
+  });
   const invoke = (stack: Stack) => statements(stack).filter((s) => [s.Action].flat().includes("lambda:InvokeWebFunctionEndpoint"));
   assert.deepEqual(
     statements(storeWeb).filter((s) => !invoke(storeWeb).includes(s)).map((s) => [s.Action].flat()),
@@ -110,6 +116,7 @@ test("the assets bucket name is unique per account and region, inside the stage 
 test("stateful resources are retained", () => {
   for (const [stack, type] of [
     [account, "AWS::Cognito::UserPool"],
+    [account, "AWS::DynamoDB::Table"],
     [ordersApi, "AWS::DynamoDB::Table"],
     [cartApi, "AWS::DynamoDB::Table"],
     [assets, "AWS::S3::Bucket"],

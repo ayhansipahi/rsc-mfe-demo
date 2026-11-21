@@ -39,12 +39,36 @@ Notifications.setNotificationHandler({
 // Asked when a guest signs in (the system prompts only the first time): what the app will notify
 // about (orders) needs a session, and asking at launch gets a reflex "Don't Allow". Android 13
 // shows no prompt until a channel exists.
-// ponytail: no push token yet. It goes with the backend that stores it and sends (Expo push service).
 async function askForNotifications() {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", { name: "Default", importance: Notifications.AndroidImportance.DEFAULT });
   }
-  await Notifications.requestPermissionsAsync();
+  return (await Notifications.requestPermissionsAsync()).granted;
+}
+// The device's Expo push token goes to the account vertical through a loaded page, so the session
+// cookie goes along: stored under whoever is signed in, removed once nobody is. The account
+// stack's push-send function sends to it. null: nothing told in this run yet.
+let pushRegistered: boolean | null = null;
+async function syncPushToken(view: WebViewHandle | null, signedIn: boolean) {
+  if (!view || signedIn === pushRegistered || !(await Notifications.getPermissionsAsync()).granted) return;
+  const { data } = await Notifications.getExpoPushTokenAsync();
+  pushRegistered = signedIn;
+  view.injectJavaScript(`fetch("/auth/push-token",{method:"${signedIn ? "POST" : "DELETE"}",body:${JSON.stringify(data)}});true;`);
+}
+// A signed-in cart left with something in it gets a reminder, as a store app sends one. Local: the
+// device schedules it on the way to the background and cancels it on the way back; no server.
+// ponytail: one fixed delay; make it a setting if someone wants to tune it.
+const CART_REMINDER_SECONDS = 60 * 60;
+function remindOfCart(count: number) {
+  Notifications.scheduleNotificationAsync({
+    identifier: "cart",
+    content: {
+      title: "Your cart is waiting",
+      body: `${count} ${count === 1 ? "item is" : "items are"} still in your cart.`,
+      data: { url: `${ORIGIN}/store/cart` },
+    },
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: CART_REMINDER_SECONDS },
+  });
 }
 
 export const ORIGIN = "https://rscmfe.sph.sh";
@@ -128,7 +152,7 @@ const Shell = createContext<{
   bg: string;
   fg: string;
   signedIn: boolean;
-  onMessage(event: WebViewMessageEvent): void;
+  onMessage(event: WebViewMessageEvent, view: WebViewHandle | null): void;
   open(tab: Tab): void;
   // Each tab's own page, the first screen of its stack, and what pops that stack back to it.
   views: Record<string, WebViewHandle | null>;
@@ -234,7 +258,7 @@ export function Page() {
         // moment the finger lifts. This is the rate every native list glides at.
         decelerationRate="normal"
         contentInsetAdjustmentBehavior="automatic"
-        onMessage={shell.onMessage}
+        onMessage={(event) => shell.onMessage(event, web.current)}
         onNavigationStateChange={(state) => {
           canGoBack.current = state.canGoBack;
         }}
@@ -309,6 +333,8 @@ export default function ShellLayout() {
   // Set on launch and on every trip to the background; the next known session decides. A guest has
   // nothing to protect, and a sign-in that just happened was itself Face ID, so neither locks.
   const needsUnlock = useRef(true);
+  // The page that last reported the session, while it stays mounted: where the push token goes.
+  const reporter = useRef<WebViewHandle | null>(null);
 
   async function unlock() {
     const result = await LocalAuthentication.authenticateAsync({ promptMessage: "Unlock RSC Shell" });
@@ -350,10 +376,15 @@ export default function ShellLayout() {
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       // ponytail: locks on every return; add a grace period if quick app switches get annoying.
-      if (state === "background") needsUnlock.current = true;
-      else if (state === "active" && needsUnlock.current && knownSession.current !== null) {
-        needsUnlock.current = false;
-        if (knownSession.current) lock();
+      if (state === "background") {
+        needsUnlock.current = true;
+        if (cartSeen.current) remindOfCart(cartSeen.current);
+      } else if (state === "active") {
+        Notifications.cancelScheduledNotificationAsync("cart");
+        if (needsUnlock.current && knownSession.current !== null) {
+          needsUnlock.current = false;
+          if (knownSession.current) lock();
+        }
       }
     });
     return () => sub.remove();
@@ -405,7 +436,7 @@ export default function ShellLayout() {
     router.navigate(href(tab));
   }
 
-  function onMessage(event: WebViewMessageEvent) {
+  function onMessage(event: WebViewMessageEvent, view: WebViewHandle | null) {
     let msg: ShellMessage;
     try {
       msg = JSON.parse(event.nativeEvent.data);
@@ -442,8 +473,12 @@ export default function ShellLayout() {
       setSignedIn(msg.signedIn);
       // The same tabs as before: no remount to wait for. Otherwise the effect above follows it.
       if (msg.signedIn === signedIn) follow();
+      // A flip remounts every tab, the reporting page with them: the token waits for a page that stays.
+      reporter.current = flipped ? null : view;
+      if (!flipped) syncPushToken(view, msg.signedIn).catch(() => {});
       if (flipped) {
-        if (msg.signedIn) askForNotifications();
+        // A prompt answered after the new pages reported: the latest of them carries the token.
+        if (msg.signedIn) askForNotifications().then((ok) => (ok ? syncPushToken(reporter.current, true) : undefined)).catch(() => {});
         cartSeen.current = null;
         goTo.current = (msg.signedIn && returnTo.current) || "/store";
         returnTo.current = null;
