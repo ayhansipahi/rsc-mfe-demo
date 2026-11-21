@@ -20,10 +20,18 @@ const fromClient = (dir, onFound) =>
 
 const app = new Hono();
 app.use(requestLog("account-web"));
-// App-to-domain association for passkeys in the mobile shell. Served from here so the RP ID,
-// the WebView origin and the associated domain are one hostname.
+// App-to-domain association for the mobile shell: passkeys, and universal links (a link to the
+// site tapped in Safari, Mail or Messages opens the app on that page). Served from here so the RP
+// ID, the WebView origin and the associated domain are one hostname. Only pages open the app:
+// files, endpoints and logout stay in the browser. assetlinks.json below does both for Android.
 const appleAppIds = (process.env.APPLE_APP_IDS ?? "").split(",").filter(Boolean);
-app.get("/.well-known/apple-app-site-association", (c) => c.json({ webcredentials: { apps: appleAppIds } }));
+const notPages = ["/.well-known/*", "/assets/*", "/fragments/*", "/*-static/*", "/auth/*", "/store/api/*", "/logout"];
+app.get("/.well-known/apple-app-site-association", (c) =>
+  c.json({
+    webcredentials: { apps: appleAppIds },
+    applinks: { details: [{ appIDs: appleAppIds, components: [...notPages.map((p) => ({ "/": p, exclude: true })), { "/": "*" }] }] },
+  }),
+);
 const androidPackage = process.env.ANDROID_PACKAGE;
 const androidCertShas = (process.env.ANDROID_CERT_SHA256 ?? "").split(",").filter(Boolean);
 app.get("/.well-known/assetlinks.json", (c) =>

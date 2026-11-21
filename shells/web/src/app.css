@@ -21,6 +21,20 @@ body {
   isolation: isolate;
 }
 
+/* Inside the mobile shell the page is the app's screen, and a native screen does not answer a long
+   press with a text selection or a link menu, or flash grey under a tap. Fields keep selection, as
+   a native text field does. */
+main[data-shell] {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+main[data-shell] :is(input, textarea) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 /* ?stitch: show the seams. Every area a team owns carries data-owner and data-build; this outlines
    the app's main in its team's colour and prints both. Fragments draw the same for themselves inside
    their shadow roots (page CSS cannot reach in), with the snippet each fragment file carries. */
