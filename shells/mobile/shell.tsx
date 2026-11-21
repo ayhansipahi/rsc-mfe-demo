@@ -18,7 +18,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider, useRoute } from "expo-router/re
 import { NativeTabs, type MaterialIcon, type SFSymbolIcon } from "expo-router/native-tabs";
 import { StatusBar } from "expo-status-bar";
 import { createContext, use, useCallback, useEffect, useRef, useState } from "react";
-import { AppState, DynamicColorIOS, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { AppState, BackHandler, DynamicColorIOS, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
@@ -65,6 +65,7 @@ type ShellMessage =
 
 interface WebViewHandle {
   injectJavaScript(js: string): void;
+  goBack(): void;
 }
 
 const Shell = createContext<{
@@ -81,12 +82,20 @@ export function Page() {
   const tab = tabs.find((t) => t.name === name)!;
   const top = useSafeAreaInsets().top;
   const seen = useRef(false);
+  const canGoBack = useRef(false);
   useFocusEffect(
     useCallback(() => {
       // The cart page is server-rendered; adds from the Store tab happened in another WebView.
       // A page-side reload, not WebView.reload(): that one shows the library's white loading view.
       if (name === "cart" && seen.current) shell.views.cart?.injectJavaScript("location.reload();true;");
       seen.current = true;
+      // Android's back walks the page's history first; at its start the system takes over. iOS has
+      // the edge swipe on the WebView itself and never fires this.
+      const back = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (canGoBack.current) shell.views[name]?.goBack();
+        return canGoBack.current;
+      });
+      return () => back.remove();
     }, [name, shell]),
   );
   return (
@@ -101,8 +110,18 @@ export function Page() {
         source={{ uri: `${ORIGIN}${tab.path}` }}
         applicationNameForUserAgent={SHELL_UA}
         allowsBackForwardNavigationGestures
+        // The system refresh control on the page's own scroll view. It reloads natively, so the
+        // library's loading view stays out of it. ponytail: iOS only; Android's WebView has no
+        // refresh control, and wrapping it in one is its own change.
+        pullToRefreshEnabled
+        // Not optional: unset, the library hands UIScrollView a rate of 0 and a flick stops dead the
+        // moment the finger lifts. This is the rate every native list glides at.
+        decelerationRate="normal"
         contentInsetAdjustmentBehavior="automatic"
         onMessage={shell.onMessage}
+        onNavigationStateChange={(state) => {
+          canGoBack.current = state.canGoBack;
+        }}
         // Anything off-origin would leave the product; keep it inside the shell's one domain.
         // Compare origins, not prefixes: a startsWith check also matches look-alike hosts.
         onShouldStartLoadWithRequest={(req) => new URL(req.url).origin === ORIGIN}
@@ -224,7 +243,23 @@ export default function ShellLayout() {
             </NativeTabs.BottomAccessory>
           )}
           {tabs.map((tab) => (
-            <NativeTabs.Trigger key={tab.name} name={tab.name} hidden={tab.auth !== undefined && tab.auth !== signedIn}>
+            <NativeTabs.Trigger
+              key={tab.name}
+              name={tab.name}
+              hidden={tab.auth !== undefined && tab.auth !== signedIn}
+              // The selected tab tapped again, as on a native tab: off its own page it goes back to
+              // it, on it it scrolls to the top. UIKit does neither by itself for a WKWebView. The
+              // press is emitted before the tab changes, so focused here means it already was.
+              listeners={({ navigation }) => ({
+                tabPress: () => {
+                  if (!navigation.isFocused()) return;
+                  const path = JSON.stringify(tab.path);
+                  views.current[tab.name]?.injectJavaScript(
+                    `location.pathname+location.search===${path}?scrollTo({top:0,behavior:"smooth"}):location.assign(${path});true;`,
+                  );
+                },
+              })}
+            >
               <NativeTabs.Trigger.Icon {...tab.icon} />
               <NativeTabs.Trigger.Label>{tab.label}</NativeTabs.Trigger.Label>
               {tab.name === "cart" && cartCount > 0 && <NativeTabs.Trigger.Badge>{String(cartCount)}</NativeTabs.Trigger.Badge>}
